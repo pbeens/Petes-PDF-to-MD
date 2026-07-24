@@ -25,6 +25,18 @@ Open-source utility to convert PDF documents to high-quality Markdown for AI wor
 - Python 3.10+ (or newer)
 - PyMuPDF (`fitz`) Python package
 
+### Create a Python virtual environment (recommended)
+
+From the project root, create a local virtual environment named `.venv`:
+
+- macOS/Linux: `python3 -m venv .venv`
+- Windows (PowerShell): `py -m venv .venv`
+
+Activate it before installing Python packages:
+
+- macOS/Linux: `source .venv/bin/activate`
+- Windows (PowerShell): `.\.venv\Scripts\Activate.ps1`
+
 Install PyMuPDF:
 
 - macOS/Linux: `python3 -m pip install pymupdf`
