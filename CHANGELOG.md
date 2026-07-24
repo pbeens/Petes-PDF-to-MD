@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.7.2a] - 2026-07-24
+
+### Changed
+
+- Release version baseline set to `v0.7.2a`.
+
+### Fixed
+
+- Prevented conversion crashes when section titles contain Unicode replacement characters that break progress logging on Windows consoles.
+
 ## [0.7.2] - 2026-03-21
 
 ### Changed

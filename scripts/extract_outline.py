@@ -4,6 +4,7 @@ import difflib
 import json
 import math
 import re
+import sys
 from pathlib import Path
 
 import fitz
@@ -16,7 +17,33 @@ def slugify(value: str) -> str:
 
 
 def clean_line(line: str) -> str:
+    if line is None:
+        return ""
+    if not isinstance(line, str):
+        line = str(line)
+
+    line = line.replace("\x00", "").replace("\ufffc", "")
+    line = re.sub(r"[\x00-\x1f\x7f]", " ", line)
     return re.sub(r"\s+", " ", line).strip()
+
+
+def safe_console_text(text: str, max_length: int = 80) -> str:
+    if text is None:
+        return ""
+    if not isinstance(text, str):
+        text = str(text)
+
+    text = text.replace("\x00", "")
+    text = text.replace("\ufffc", "")
+    text = re.sub(r"[\x00-\x1f\x7f]", " ", text)
+
+    encoding = getattr(sys.stdout, "encoding", None) or "utf-8"
+    try:
+        text.encode(encoding, errors="strict")
+    except UnicodeEncodeError:
+        text = text.encode(encoding, errors="replace").decode(encoding, errors="replace")
+
+    return clean_line(text)[:max_length]
 
 
 def clean_paragraph(text: str) -> str:
@@ -1508,7 +1535,7 @@ def write_outputs(
     section_rows = []
     total_sections = len(normalized)
     for i, current in enumerate(normalized):
-        current_title = clean_line(current.get("title", ""))[:80]
+        current_title = safe_console_text(current.get("title", ""), max_length=80)
         print(f"PROGRESS: Extracting section text {i + 1}/{total_sections}: {current_title}", flush=True)
         start = max(1, current["page_start"])
         has_next = i + 1 < len(normalized)
@@ -1616,7 +1643,7 @@ def write_outputs(
         for row in section_rows:
             i = row["index"]
             current = normalized[i]
-            current_title = clean_line(current.get("title", ""))[:80]
+            current_title = safe_console_text(current.get("title", ""), max_length=80)
             print(f"PROGRESS: Writing section markdown {i + 1}/{total_rows}: {current_title}", flush=True)
             start = row["start"]
             end = row["end"]
@@ -1672,7 +1699,7 @@ def write_outputs(
             if not grouped_rows:
                 continue
             current = normalized[major_idx]
-            current_title = clean_line(current.get("title", ""))[:80]
+            current_title = safe_console_text(current.get("title", ""), max_length=80)
             print(
                 f"PROGRESS: Writing major-heading markdown {major_idx + 1}/{len(normalized)}: {current_title}",
                 flush=True,

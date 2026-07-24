@@ -1,6 +1,6 @@
 {
   "name": "petes-pdf-to-md",
-  "version": "0.7.2",
+  "version": "0.7.2a",
   "description": "Open-source utility to convert PDF documents to high-quality Markdown for AI workflows.",
   "private": true,
   "main": "electron/main.cjs",

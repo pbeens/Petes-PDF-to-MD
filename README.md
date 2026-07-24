@@ -12,7 +12,7 @@ Open-source utility to convert PDF documents to high-quality Markdown for AI wor
 
 ## Current Version
 
-`v0.7.2`
+`v0.7.2a`
 
 ## Releases
 
@@ -51,7 +51,7 @@ Install PyMuPDF:
 3. Run unpackaged app for development:
    `npm run gui`
 4. Build release artifact (DMG):
-   `npm run release:prep -- --version 0.7.2 --build`
+   `npm run release:prep -- --version 0.7.2a --build`
 
 
 
@@ -183,7 +183,7 @@ Notes:
 
 - This indicates an older packaged build.
 - Rebuild and reinstall using:
-  `npm run release:prep -- --version 0.7.2 --build`
+  `npm run release:prep -- --version 0.7.2a --build`
 
 ### "Conversion failed ... Output files are locked by another program"
 
@@ -205,7 +205,7 @@ Notes:
 ### "I only see a .app file after build"
 
 - `dist/mac-arm64/*.app` is an intermediate output.
-- Upload `dist/Pete-s-PDF-to-MD-v0.7.2-macOS.dmg` to GitHub Releases.
+- Upload `dist/Pete-s-PDF-to-MD-v0.7.2a-macOS.dmg` to GitHub Releases.
 
 ## License
 
