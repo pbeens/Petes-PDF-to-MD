@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 import argparse
 import difflib
 import json
@@ -7,6 +7,12 @@ import re
 from pathlib import Path
 
 import fitz
+
+try:
+    # Optional: tagged-PDF headings and the hybrid text engine.
+    import pdf_inspector
+except ImportError:
+    pdf_inspector = None
 
 
 def slugify(value: str) -> str:
@@ -56,6 +62,79 @@ def build_outline_from_toc(doc):
     return entries
 
 
+def build_outline_from_tags(pdf_path: Path) -> list[dict]:
+    """
+    Build the outline from a tagged PDF's structure tree (H1-H6 roles).
+
+    Requires pdf-inspector; returns [] when it is missing or the PDF is untagged.
+    Heading text is joined from the text runs whose (page, MCID) carry a
+    heading role. Positions are left as None for infer_toc_heading_positions.
+    """
+    if pdf_inspector is None:
+        return []
+    try:
+        elements = pdf_inspector.extract_structure_elements(str(pdf_path))
+        roles = {
+            (e.page, e.mcid): e.role
+            for e in elements
+            if re.fullmatch(r"H[1-6]?", e.role or "")
+        }
+        if not roles:
+            return []
+        items = pdf_inspector.extract_text_with_positions(str(pdf_path))
+    except Exception:
+        return []
+
+    runs = {}
+    for item in items:
+        key = (item.page, item.mcid)
+        if item.mcid is None or key not in roles or item.item_type != "text":
+            continue
+        runs.setdefault(key, []).append(item)
+
+    entries = []
+    prev_key = None
+    for key in sorted(runs):
+        parts = []
+        last = None
+        for item in runs[key]:
+            text = item.text
+            if last is not None:
+                same_line = abs(item.y - last.y) <= 2.0
+                gap = item.x - (last.x + last.width)
+                if not same_line or gap > 0.15 * max(item.font_size, 1.0):
+                    parts.append(" ")
+            parts.append(text)
+            last = item
+        # Drop superscript footnote markers ("Effect¹⁰⁷").
+        title = clean_line(re.sub(r"[¹²³⁰-⁹]+", "", "".join(parts)))
+        if not title or len(title) > 200:
+            continue
+        role = roles[key]
+        level = int(role[1]) if len(role) > 1 else 1
+        # A heading that wraps onto a second marked-content run continues the previous one.
+        if (
+            entries
+            and prev_key is not None
+            and key[0] == prev_key[0]
+            and key[1] == prev_key[1] + 1
+            and roles[prev_key] == role
+        ):
+            entries[-1]["title"] = clean_line(f"{entries[-1]['title']} {title}")
+        else:
+            entries.append(
+                {
+                    "level": level,
+                    "title": title,
+                    "page_start": key[0],
+                    "source": "pdf-tags",
+                    "y0": None,
+                }
+            )
+        prev_key = key
+    return entries
+
+
 def normalize_match_text(value: str) -> str:
     value = clean_line(str(value or "")).lower()
     value = re.sub(r"<[^>]+>", " ", value)
@@ -64,18 +143,21 @@ def normalize_match_text(value: str) -> str:
 
 
 def repair_mojibake(text: str) -> str:
+    # Escapes keep this table ASCII-only so re-saving the file in another
+    # encoding cannot garble it again (as happened in v0.7.1).
     replacements = {
-        "ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢": "â€¢",
-        "Ã¢â‚¬Â¢": "â€¢",
-        "Ã¢â‚¬â€œ": "â€“",
-        "Ã¢â‚¬â€": "â€”",
-        "Ã¢â‚¬Ëœ": "â€˜",
-        "Ã¢â‚¬â„¢": "â€™",
-        "Ã¢â‚¬Å“": "â€œ",
-        "Ã¢â‚¬Â": "â€",
-        "Ã¢â‚¬Â¦": "â€¦",
-        "Ã‚ ": " ",
-        "Ã‚": "",
+        "\u00c3\u00a2\u00e2\u201a\u00ac\u00c2\u00a2": "\u2022",  # double-encoded bullet
+        "\u00e2\u20ac\u00a2": "\u2022",  # bullet
+        "\u00e2\u20ac\u201c": "\u2013",  # en dash
+        "\u00e2\u20ac\u201d": "\u2014",  # em dash
+        "\u00e2\u20ac\u02dc": "\u2018",  # left single quote
+        "\u00e2\u20ac\u2122": "\u2019",  # right single quote
+        "\u00e2\u20ac\u0153": "\u201c",  # left double quote
+        "\u00e2\u20ac\u009d": "\u201d",  # right double quote
+        "\u00e2\u20ac\u00a6": "\u2026",  # ellipsis
+        "\u00c2\u00a0": " ",
+        "\u00c2 ": " ",
+        "\u00c2": "",
     }
     out = text
     for bad, good in replacements.items():
@@ -299,7 +381,11 @@ def build_outline_heuristic(doc):
         text = row["text"]
         if len(text) < 4 or len(text) > 120:
             continue
-        if text.startswith(("â€¢", "-", "*")):
+        if text.startswith(("•", "◦", "▪", "-", "*")):
+            continue
+        # Numbered list items ("3. Students discuss their choices ...") are body text
+        # when long or sentence-like; short titles such as "1. Introduction" stay.
+        if re.match(r"^\d{1,2}[.)]\s", text) and (len(text.split()) > 8 or text.endswith(".")):
             continue
         if row["size"] < cutoff:
             continue
@@ -906,7 +992,12 @@ def markdown_table_from_rows(rows: list[list[str]]) -> str:
             return False
         first = row[0].lower()
         rest = " ".join(row[1:5]).lower()
-        return "categories" in first and "level 1" in rest and "level 4" in rest
+        return "categories" in first and bool(re.search(r"level\s*1", rest)) and bool(re.search(r"level\s*4", rest))
+
+    def looks_like_achievement_body(rows: list[list[str]]) -> bool:
+        # Achievement-chart level cells read "The student demonstrates ...";
+        # other 5-column tables (e.g. the course list) must keep their own header.
+        return any("the student" in cell.lower() for row in rows[:3] for cell in row[1:])
 
     def is_separator_like_row(row: list[str]) -> bool:
         return all(re.fullmatch(r"-{2,}", cell.strip()) for cell in row if cell.strip()) and any(cell.strip() for cell in row)
@@ -914,7 +1005,7 @@ def markdown_table_from_rows(rows: list[list[str]]) -> str:
     if is_achievement_header_row(normalized_rows[0]):
         header = normalized_rows[0]
         body = normalized_rows[1:]
-    elif col_count == 5:
+    elif col_count == 5 and looks_like_achievement_body(normalized_rows):
         header = ["Categories", "Level 1", "Level 2", "Level 3", "Level 4"]
         body = normalized_rows
     else:
@@ -933,12 +1024,40 @@ def markdown_table_from_rows(rows: list[list[str]]) -> str:
     return "\n".join(lines)
 
 
+def table_rows_from_words(table, words) -> list[list[str]]:
+    """
+    Rebuild table cell text from page words instead of table.extract().
+
+    table.extract() only inserts a space where the PDF draws a space glyph,
+    so many PDFs come out glued ("Knowledgeofcontent"). Page words carry
+    MuPDF's gap-based spacing, so joining the words inside each cell box
+    keeps normal spacing and reading order.
+    """
+    rows = []
+    for row in table.rows:
+        cells = []
+        for cell in row.cells:
+            if cell is None:
+                cells.append(None)
+                continue
+            x0, y0, x1, y1 = cell
+            inside = [
+                w for w in words
+                if x0 <= (w[0] + w[2]) / 2 <= x1 and y0 <= (w[1] + w[3]) / 2 <= y1
+            ]
+            inside.sort(key=lambda w: (w[5], w[6], w[7]))
+            cells.append(" ".join(w[4] for w in inside))
+        rows.append(cells)
+    return rows
+
+
 def extract_page_tables(page, top: float, bottom: float) -> list[dict]:
     found = []
     try:
         table_objs = page.find_tables().tables
     except Exception:
         table_objs = []
+    words = page.get_text("words") if table_objs else []
 
     seen = set()
     for table in table_objs:
@@ -948,7 +1067,11 @@ def extract_page_tables(page, top: float, bottom: float) -> list[dict]:
         x0, y0, x1, y1 = [float(v) for v in bbox[:4]]
         if y1 <= top or y0 >= bottom:
             continue
-        md = markdown_table_from_rows(table.extract() or [])
+        try:
+            rows = table_rows_from_words(table, words)
+        except Exception:
+            rows = table.extract() or []
+        md = markdown_table_from_rows(rows)
         if not md:
             continue
         key = (round(y0, 1), round(y1, 1), md)
@@ -1191,6 +1314,169 @@ def build_section_markdown(title: str, level: int, start: int, end: int, source:
     )
 
 
+HEADING_LINE_RE = re.compile(r"^#{1,6}\s+(.*?)\s*#*\s*$")
+LIST_ITEM_RE = re.compile(r"^\s*(?:[-*+]|\d{1,3}[.)])\s+")
+
+
+def strip_inline_markdown(text: str) -> str:
+    out = re.sub(r"<[^>]+>", "", text)
+    out = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", out)
+    out = re.sub(r"(\*\*|__|\*|`)", "", out)
+    return clean_line(out)
+
+
+def split_markdown_by_outline(markdown: str, outline: list[dict], page_count: int) -> tuple[list[str], str]:
+    """
+    Split whole-document Markdown into one body per outline entry.
+
+    Headings are matched in order. A match must fall within a few pages'
+    worth of lines of where the heading's page says it should be, so one
+    false match cannot swallow the rest of the document. Unmatched headings
+    get an empty body; their text stays with the preceding section.
+    Returns (bodies aligned with outline, text before the first match).
+    """
+    lines = markdown.splitlines()
+    norms = []
+    is_heading = []
+    for line in lines:
+        stripped = line.strip()
+        m = HEADING_LINE_RE.match(stripped)
+        is_heading.append(bool(m))
+        norms.append(normalize_match_text(strip_inline_markdown(m.group(1) if m else stripped)))
+
+    lines_per_page = max(1.0, len(lines) / max(1, page_count))
+    positions = {}
+    cursor = 0
+    anchor_line, anchor_page = 0, 1
+    for idx, entry in enumerate(outline):
+        if entry.get("source") == "synthetic-front-matter":
+            continue
+        title_norm = normalize_match_text(entry.get("title", ""))
+        if not title_norm:
+            continue
+        page = int(entry.get("page_start") or anchor_page)
+        limit = anchor_line + int((max(0, page - anchor_page) + 3) * lines_per_page * 1.5)
+        # Prefer a Markdown heading line; fall back to a short plain line with the
+        # exact title, since the same words often appear earlier in a list.
+        found = None
+        plain_fallback = None
+        for i in range(cursor, min(len(lines), limit)):
+            norm = norms[i]
+            if not norm:
+                continue
+            if is_heading[i] and (
+                norm == title_norm
+                or (len(title_norm) >= 8 and len(norm) >= 8 and (title_norm in norm or norm in title_norm))
+            ):
+                found = i
+                break
+            if plain_fallback is None and norm == title_norm and len(lines[i].strip()) <= len(entry["title"]) + 12:
+                plain_fallback = i
+        if found is None:
+            found = plain_fallback
+        if found is not None:
+            positions[idx] = found
+            cursor = found + 1
+            anchor_line, anchor_page = found, page
+
+    bodies = [""] * len(outline)
+    ordered = sorted(positions.items(), key=lambda item: item[1])
+    for n, (idx, line_no) in enumerate(ordered):
+        end = ordered[n + 1][1] if n + 1 < len(ordered) else len(lines)
+        bodies[idx] = "\n".join(lines[line_no + 1:end]).strip()
+    lead_in_end = ordered[0][1] if ordered else len(lines)
+    lead_in = "\n".join(lines[:lead_in_end]).strip()
+    return bodies, lead_in
+
+
+def find_furniture_lines(markdown: str, margin_noise_profile: dict) -> set[str]:
+    """
+    Normalized text of short standalone lines that repeat across the document.
+
+    Catches side-margin labels (e.g. "Extract") and running headers that
+    pdf-inspector leaves in, plus the top/bottom bands found by PyMuPDF.
+    """
+    counts = {}
+    for line in markdown.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("|") or LIST_ITEM_RE.match(stripped):
+            continue
+        m = HEADING_LINE_RE.match(stripped)
+        norm = normalize_match_text(strip_inline_markdown(m.group(1) if m else stripped))
+        if norm and len(norm.split()) <= 4:
+            counts[norm] = counts.get(norm, 0) + 1
+    furniture = {norm for norm, count in counts.items() if count >= 5}
+    furniture |= set(margin_noise_profile.get("top", set())) | set(margin_noise_profile.get("bottom", set()))
+    return furniture
+
+
+def clean_hybrid_body(text: str, furniture: set[str]) -> str:
+    """
+    Apply Pete's cleanup to one pdf-inspector section body.
+
+    Demotes stray in-section headings to bold, drops furniture and page-number
+    lines, adds the blank line a list needs before following text, and
+    rejoins sentences split by a removed line.
+    """
+    out = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        m = HEADING_LINE_RE.match(stripped)
+        if m:
+            plain = strip_inline_markdown(m.group(1))
+            line = f"**{plain}**" if plain else ""
+            stripped = line
+        if re.search(r"\.{5,}", stripped):
+            # Dot-leader ToC lines must be plain for format_dot_leader_blocks.
+            line = stripped = strip_inline_markdown(stripped)
+        if stripped and not stripped.startswith("|") and not LIST_ITEM_RE.match(stripped):
+            norm = normalize_match_text(strip_inline_markdown(stripped))
+            if norm in furniture or re.fullmatch(r"(page )?\d{1,4}", norm or "x"):
+                continue
+            if re.fullmatch(r"categories( level \d)*", norm or ""):
+                continue
+        out.append(line)
+
+    with_breaks = []
+    for line in out:
+        prev = with_breaks[-1] if with_breaks else ""
+        if line.strip() and LIST_ITEM_RE.match(prev) and not LIST_ITEM_RE.match(line) and not line[:1].isspace():
+            with_breaks.append("")
+        with_breaks.append(line)
+    body = re.sub(r"\n{3,}", "\n\n", "\n".join(with_breaks)).strip()
+
+    paragraphs = [p for p in body.split("\n\n") if p.strip()]
+    stitched = []
+    for para in paragraphs:
+        if stitched:
+            prev_last = stitched[-1].splitlines()[-1].strip()
+            first = para.lstrip()
+            prev_is_prose = not re.match(r"^(\||#|\*\*|[-*+]\s|\d{1,3}[.)]\s)", prev_last)
+            if (
+                prev_is_prose
+                and first[:1].islower()
+                and not re.search(r"[.!?:;)\"”|]$", prev_last)
+            ):
+                stitched[-1] = stitched[-1].rstrip() + " " + first
+                continue
+        stitched.append(para)
+    return "\n\n".join(stitched)
+
+
+def front_matter_entry() -> dict:
+    return {
+        "id": "h0",
+        "level": 1,
+        "title": "Front Matter",
+        "page_start": 1,
+        "source": "synthetic-front-matter",
+        "y0": 0.0,
+        "line_count": 0,
+        "char_count": 0,
+        "section_file": None,
+    }
+
+
 def write_outputs(
     doc,
     outline,
@@ -1198,6 +1484,7 @@ def write_outputs(
     max_section_chars: int,
     include_section_metadata: bool,
     conversion_mode: str,
+    hybrid_markdown: str | None = None,
 ):
     output_md_dir, output_rel_prefix = prepare_output_dirs(out_dir, conversion_mode)
     margin_noise_profile = build_margin_noise_profile(doc)
@@ -1228,20 +1515,19 @@ def write_outputs(
         has_preface_gap = first_page > 1
         has_same_page_lead_in = first_page == 1 and first_y is not None and float(first_y) > 2.0
         if has_preface_gap or has_same_page_lead_in:
-            normalized.insert(
-                0,
-                {
-                    "id": "h0",
-                    "level": 1,
-                    "title": "Front Matter",
-                    "page_start": 1,
-                    "source": "synthetic-front-matter",
-                    "y0": 0.0,
-                    "line_count": 0,
-                    "char_count": 0,
-                    "section_file": None,
-                },
-            )
+            normalized.insert(0, front_matter_entry())
+
+    hybrid_bodies = None
+    if hybrid_markdown is not None:
+        print("PROGRESS: Splitting pdf-inspector text by heading", flush=True)
+        hybrid_bodies, lead_in = split_markdown_by_outline(hybrid_markdown, normalized, doc.page_count)
+        has_front_matter = bool(normalized) and normalized[0]["source"] == "synthetic-front-matter"
+        if lead_in and not has_front_matter:
+            normalized.insert(0, front_matter_entry())
+            hybrid_bodies.insert(0, lead_in)
+        elif has_front_matter:
+            hybrid_bodies[0] = lead_in
+        furniture = find_furniture_lines(hybrid_markdown, margin_noise_profile)
 
     section_rows = []
     total_sections = len(normalized)
@@ -1272,6 +1558,23 @@ def write_outputs(
             section_end_page = doc.page_count
 
         end = max(start - 1, min(doc.page_count, section_end_page))
+
+        if hybrid_bodies is not None:
+            body = clean_hybrid_body(hybrid_bodies[i], furniture) or "(No extractable text in this range.)"
+            body = format_dot_leader_blocks(body)
+            body = deduplicate_body_paragraphs(body)
+            section_rows.append(
+                {
+                    "index": i,
+                    "start": start,
+                    "end": end,
+                    "title": current["title"],
+                    "level": current["level"],
+                    "source": current["source"],
+                    "body": body,
+                }
+            )
+            continue
 
         pages_text = []
         for page_no in range(start - 1, end):
@@ -1533,6 +1836,12 @@ def main():
         default="sections",
         help="Output grouping mode: single file, per-major-heading, or per-section",
     )
+    parser.add_argument(
+        "--text-engine",
+        choices=["pymupdf", "hybrid"],
+        default="pymupdf",
+        help="Body text source: PyMuPDF (default) or hybrid (pdf-inspector text + Pete's cleanup)",
+    )
     args = parser.parse_args()
 
     input_path = Path(args.input).expanduser().resolve()
@@ -1541,9 +1850,26 @@ def main():
 
     print("PROGRESS: Opening PDF document", flush=True)
     doc = fitz.open(str(input_path))
+    if not hasattr(fitz.Page, "find_tables"):
+        print(
+            f"PROGRESS: Warning: PyMuPDF {fitz.VersionBind} has no table detection; tables will be plain text. "
+            "Upgrade with: python3 -m pip install --upgrade pymupdf",
+            flush=True,
+        )
 
     print("PROGRESS: Detecting headings", flush=True)
     outline = build_outline_from_toc(doc)
+    tag_outline = build_outline_from_tags(input_path)
+    if not outline and tag_outline:
+        outline = tag_outline
+        print("PROGRESS: No embedded TOC found; using tagged-PDF headings", flush=True)
+    elif outline and tag_outline:
+        # Bookmarks are often flat (every entry one level); tags keep the real hierarchy.
+        toc_levels = len({e["level"] for e in outline})
+        tag_levels = len({e["level"] for e in tag_outline})
+        if tag_levels > toc_levels and len(tag_outline) >= len(outline) // 2:
+            outline = tag_outline
+            print("PROGRESS: Bookmarks are flat; using tagged-PDF headings", flush=True)
     if outline:
         outline = infer_toc_heading_positions(doc, outline)
     if not outline:
@@ -1552,6 +1878,22 @@ def main():
     if not outline:
         outline = [{"level": 1, "title": "Document", "page_start": 1, "source": "fallback"}]
     outline = normalize_outline(outline)
+
+    hybrid_markdown = None
+    if args.text_engine == "hybrid":
+        if pdf_inspector is None:
+            print(
+                "PROGRESS: Warning: pdf-inspector is not installed; using PyMuPDF text. "
+                "Install with: python3 -m pip install pdf-inspector",
+                flush=True,
+            )
+        else:
+            print("PROGRESS: Extracting text with pdf-inspector", flush=True)
+            result = pdf_inspector.process_pdf(str(input_path))
+            hybrid_markdown = result.markdown or ""
+            if result.pages_needing_ocr:
+                pages = ", ".join(str(p) for p in result.pages_needing_ocr)
+                print(f"PROGRESS: Warning: pages {pages} look scanned and have no extractable text", flush=True)
 
     base = input_path.stem
     out_dir = Path(args.out_dir).expanduser().resolve() / base
@@ -1563,6 +1905,7 @@ def main():
         args.max_section_chars,
         bool(args.include_section_metadata),
         args.conversion_mode,
+        hybrid_markdown=hybrid_markdown,
     )
     print("PROGRESS: Finalizing output indexes", flush=True)
 

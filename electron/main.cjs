@@ -378,6 +378,9 @@ ipcMain.handle('run-conversion', async (event, inputPdfPath, outputRootPath, con
   const outputMode = ['single', 'major', 'sections'].includes(String(conversionOptions?.outputMode || ''))
     ? String(conversionOptions.outputMode)
     : 'sections';
+  const textEngine = ['pymupdf', 'hybrid'].includes(String(conversionOptions?.textEngine || ''))
+    ? String(conversionOptions.textEngine)
+    : 'pymupdf';
 
   const scriptPath = path.join(getScriptsDir(), 'phase1.js');
   const outputRoot = normalizeOutputRoot(outputRootPath);
@@ -398,6 +401,7 @@ ipcMain.handle('run-conversion', async (event, inputPdfPath, outputRootPath, con
         '--out-dir', outputRoot,
         '--include-section-metadata', includeSectionMetadata ? '1' : '0',
         '--conversion-mode', outputMode,
+        '--text-engine', textEngine,
       ],
       {
         cwd: conversionCwd,

@@ -23,12 +23,13 @@ Open-source utility to convert PDF documents to high-quality Markdown for AI wor
 
 - Node.js 20+ (includes `npm`)
 - Python 3.10+ (or newer)
-- PyMuPDF (`fitz`) Python package
+- PyMuPDF (`fitz`) Python package, version 1.23 or newer (older versions have no table detection)
+- Optional: `pdf-inspector` Python package, for tagged-PDF headings and the experimental Hybrid engine (`python3 -m pip install pdf-inspector`)
 
-Install PyMuPDF:
+Install or upgrade PyMuPDF:
 
-- macOS/Linux: `python3 -m pip install pymupdf`
-- Windows (PowerShell): `py -m pip install pymupdf`
+- macOS/Linux: `python3 -m pip install --upgrade pymupdf`
+- Windows (PowerShell): `py -m pip install --upgrade pymupdf`
 
 ## Build From Source
 
@@ -143,6 +144,7 @@ Current GUI features:
 - drag and drop a PDF onto the `Select PDF` button
 - select output root folder
 - choose conversion output mode: `One file`, `By major heading`, or `Individual sections`
+- choose text engine: `PyMuPDF` (default) or `Hybrid (pdf-inspector)` (experimental; requires `pdf-inspector`)
 - run conversion (calls existing `scripts/phase1.js`)
 - preview `outline.md`
 - browse sections from `outline.json`
@@ -187,6 +189,12 @@ Notes:
   `/opt/homebrew/bin/python3 -m pip install pymupdf`
 - If needed, launch the app from Terminal with:
   `PDF_TO_MD_PYTHON=/opt/homebrew/bin/python3 open /Applications/Pete\\'s\\ PDF\\ to\\ MD.app`
+
+### "PyMuPDF ... has no table detection"
+
+- The Python interpreter the app found has PyMuPDF older than 1.23, so tables are written as plain text.
+- Upgrade PyMuPDF for that interpreter (the warning shows the version), for example:
+  `/usr/local/bin/python3 -m pip install --upgrade pymupdf`
 
 ### "I only see a .app file after build"
 

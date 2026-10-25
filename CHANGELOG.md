@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased]
+
+### Fixed
+
+- Heading detection no longer turns bulleted list items into headings. The bullet filter's `•` character had been garbled by a file-encoding mix-up in v0.7.1, so it never matched. On `ICD2O_Curriculum.pdf` this cuts the outline from 281 entries to 128.
+- `repair_mojibake` works again: its replacement table had been garbled the same way, and is now written with ASCII escapes.
+- Removed a byte-order mark added to the top of `scripts/extract_outline.py` in v0.7.1.
+- Table cells keep the spaces between words (previously `Knowledgeofcontent(eg facts . .,`). Cell text is now rebuilt from page words inside each cell box instead of `table.extract()`.
+- 5-column tables (for example, the course list) no longer get an achievement-chart `Categories / Level 1–4` header unless their cells read like an achievement chart.
+- Duplicate `Categories / Level 1–4` header rows inside achievement charts are removed again.
+- Long or sentence-like numbered list items (`3. Students discuss their choices …`) are no longer detected as headings.
+
+### Added
+
+- Warning when the installed PyMuPDF is older than 1.23 and has no table detection. Previously, tables were silently written as plain text.
+- Tagged-PDF headings: when a PDF has no bookmarks but is tagged for accessibility, the outline comes from its H1–H6 tags (requires the optional `pdf-inspector` package). On `ICD2O_Curriculum.pdf` this gives exactly the document's 101 headings at their real levels. Tags are also preferred over bookmarks when the bookmarks are flat and the tags have more levels (e.g. `AI-in-Education.pdf`: 172 single-level bookmarks become a three-level Part/chapter/section outline). Superscript footnote numbers are stripped from tagged heading titles.
+- Experimental `Engine: Hybrid (pdf-inspector)` option in the GUI (`--text-engine hybrid` on the CLI). It takes body text from pdf-inspector (correct word spacing, bold/italic, multi-column order, about 10× faster) and applies this app's cleanup: ToC tables, margin-label and running-header removal, list spacing, and sentence re-joining. It falls back to PyMuPDF with a warning when `pdf-inspector` is not installed.
+
 ## [0.7.1] - Unreleased
 
 ### Added

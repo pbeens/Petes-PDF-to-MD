@@ -21,5 +21,4 @@ __pycache__/
 *.py[cod]
 
 # Local-only tracking files
-prompts.md
 session-metrics.md
