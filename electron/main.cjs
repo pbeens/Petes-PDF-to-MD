@@ -378,9 +378,6 @@ ipcMain.handle('run-conversion', async (event, inputPdfPath, outputRootPath, con
   const outputMode = ['single', 'major', 'sections'].includes(String(conversionOptions?.outputMode || ''))
     ? String(conversionOptions.outputMode)
     : 'sections';
-  const textEngine = ['pymupdf', 'hybrid'].includes(String(conversionOptions?.textEngine || ''))
-    ? String(conversionOptions.textEngine)
-    : 'pymupdf';
 
   const scriptPath = path.join(getScriptsDir(), 'phase1.js');
   const outputRoot = normalizeOutputRoot(outputRootPath);
@@ -390,6 +387,8 @@ ipcMain.handle('run-conversion', async (event, inputPdfPath, outputRootPath, con
   const emitProgress = (message) => {
     event.sender.send(CONVERSION_PROGRESS_EVENT, { message: String(message || '') });
   };
+
+  const warnings = [];
 
   emitProgress('Starting conversion process');
   await new Promise((resolve, reject) => {
@@ -401,7 +400,6 @@ ipcMain.handle('run-conversion', async (event, inputPdfPath, outputRootPath, con
         '--out-dir', outputRoot,
         '--include-section-metadata', includeSectionMetadata ? '1' : '0',
         '--conversion-mode', outputMode,
-        '--text-engine', textEngine,
       ],
       {
         cwd: conversionCwd,
@@ -478,6 +476,10 @@ ipcMain.handle('run-conversion', async (event, inputPdfPath, outputRootPath, con
       if (line.startsWith('PROGRESS:')) {
         lastProgressAtMs = Date.now();
         lastProgressMessage = line.replace(/^PROGRESS:\s*/, '').trim();
+        // Warnings scroll past in the status line, so keep them for the final result.
+        if (/^Warning:/i.test(lastProgressMessage)) {
+          warnings.push(lastProgressMessage.replace(/^Warning:\s*/i, ''));
+        }
         emitProgress(lastProgressMessage);
       }
     };
@@ -558,7 +560,7 @@ ipcMain.handle('run-conversion', async (event, inputPdfPath, outputRootPath, con
   emitProgress('Loading outline and sections metadata');
   const payload = loadOutlinePayload(resolvedInputPdfPath, outputRoot);
   emitProgress('Conversion complete');
-  return payload;
+  return { ...payload, warnings };
 });
 
 ipcMain.handle('open-external-url', async (_event, url) => {

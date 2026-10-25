@@ -80,7 +80,7 @@ function commandExists(command, args = ['--version']) {
 }
 
 function hasPyMuPDF(pythonBin) {
-  const code = 'import fitz';
+  const code = 'try:\n    import pymupdf\nexcept ImportError:\n    import fitz';
   const check = spawnSync(pythonBin, ['-c', code], { stdio: 'ignore', windowsHide: true });
   return check.status === 0;
 }

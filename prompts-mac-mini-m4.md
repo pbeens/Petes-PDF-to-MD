@@ -4,6 +4,14 @@ Prompt log from the Mac mini M4 (`m4-mini`). Another computer may have its own l
 
 Sources: entries from 2026-10-24 were logged live. Entries from 2026-02-26 14:58 to 2026-04-02 were reconstructed on 2026-10-24 from local Codex session transcripts (`~/.codex/sessions`). Entries up to 2026-02-26 14:54 come from the last committed `prompts.md` (git `afc792e`), deleted in `4057ab6`; their times are converted from UTC, and the first 18 share one bulk-logged time.
 
+## 2026-10-24 22:00
+
+- **Goal:** Ship the improvement branch as v0.8.0 and plan a move away from depending on installed Python.
+- **Prompt:** Unhappy that the app relies on Python already installed on the computer; asked whether a Rust version is feasible. Asked what to do with the current branch, then asked to release it as v0.8.0 (significant change) and build it overnight without interaction. Do not publish to GitHub.
+- **Host:** m4-mini
+- **Agent:** Claude Code
+- **Context:** Hybrid engine moved to CLI-only; warnings shown in a GUI dialog; table empty/staggered column cleanup; bookmark footnote numbers stripped; PyMuPDF 2.0 import fix; DMG built locally. Rust/Tauri rewrite proposed as the next step.
+
 ## 2026-10-24 21:50
 
 - **Goal:** Restore the lost prompt history and keep this computer's log separate.

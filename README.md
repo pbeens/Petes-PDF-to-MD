@@ -12,7 +12,7 @@ Open-source utility to convert PDF documents to high-quality Markdown for AI wor
 
 ## Current Version
 
-`v0.7.1`
+`v0.8.0`
 
 ## Releases
 
@@ -21,15 +21,18 @@ Open-source utility to convert PDF documents to high-quality Markdown for AI wor
 
 ## Requirements
 
-- Node.js 20+ (includes `npm`)
+The app does not include Python. It runs its converter with the Python already installed on your computer, so even the downloaded app needs:
+
 - Python 3.10+ (or newer)
-- PyMuPDF (`fitz`) Python package, version 1.23 or newer (older versions have no table detection)
-- Optional: `pdf-inspector` Python package, for tagged-PDF headings and the experimental Hybrid engine (`python3 -m pip install pdf-inspector`)
+- PyMuPDF Python package, version 1.23 or newer (older versions convert but skip tables; the app warns you when this happens)
+- Optional: `pdf-inspector` Python package. When installed, PDFs tagged for accessibility get their real multi-level headings (`python3 -m pip install pdf-inspector`)
 
 Install or upgrade PyMuPDF:
 
 - macOS/Linux: `python3 -m pip install --upgrade pymupdf`
 - Windows (PowerShell): `py -m pip install --upgrade pymupdf`
+
+Building from source also needs Node.js 20+ (includes `npm`).
 
 ## Build From Source
 
@@ -40,11 +43,11 @@ Install or upgrade PyMuPDF:
 3. Run unpackaged app for development:
    `npm run gui`
 4. Build release artifact (DMG):
-   `npm run release:prep -- --version 0.7.1 --build`
+   `npm run release:prep -- --version 0.8.0 --build`
 
 Release artifact:
 
-- `dist/Pete-s-PDF-to-MD-v0.7.1-macOS.dmg`
+- `dist/Pete-s-PDF-to-MD-v0.8.0-macOS.dmg`
 
 ### Windows (PowerShell)
 
@@ -93,6 +96,8 @@ Current Phase 1 implements heading outline extraction and split planning using a
 Run:
 
 - `npm run phase1 -- --input "test-data/pdfs/<file>.pdf"`
+
+Experimental, command line only: `--text-engine hybrid` takes body text from `pdf-inspector` (better word spacing, bold/italic, multi-column order) and applies this app's cleanup. It needs `pdf-inspector` installed and falls back to PyMuPDF with a warning otherwise.
 
 Outputs:
 
@@ -144,7 +149,6 @@ Current GUI features:
 - drag and drop a PDF onto the `Select PDF` button
 - select output root folder
 - choose conversion output mode: `One file`, `By major heading`, or `Individual sections`
-- choose text engine: `PyMuPDF` (default) or `Hybrid (pdf-inspector)` (experimental; requires `pdf-inspector`)
 - run conversion (calls existing `scripts/phase1.js`)
 - preview `outline.md`
 - browse sections from `outline.json`
@@ -171,7 +175,7 @@ Notes:
 
 - This indicates an older packaged build.
 - Rebuild and reinstall using:
-  `npm run release:prep -- --version 0.7.1 --build`
+  `npm run release:prep -- --version 0.8.0 --build`
 
 ### "Conversion failed ... Output files are locked by another program"
 
@@ -199,7 +203,7 @@ Notes:
 ### "I only see a .app file after build"
 
 - `dist/mac-arm64/*.app` is an intermediate output.
-- Upload `dist/Pete-s-PDF-to-MD-v0.7.1-macOS.dmg` to GitHub Releases.
+- Upload `dist/Pete-s-PDF-to-MD-v0.8.0-macOS.dmg` to GitHub Releases.
 
 ## License
 

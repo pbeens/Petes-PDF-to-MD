@@ -11,7 +11,6 @@ const state = {
   includeSectionMetaInFiles: true,
   autoRunOnSelect: false,
   outputMode: 'sections',
-  textEngine: 'pymupdf',
   conversionDirty: false,
   activeConversionRunId: null,
   conversionStatusBase: '',
@@ -48,7 +47,6 @@ const hideSectionMetaChk = document.getElementById('hideSectionMetaChk');
 const includeSectionMetaChk = document.getElementById('includeSectionMetaChk');
 const autoRunOnSelectChk = document.getElementById('autoRunOnSelectChk');
 const outputModeSel = document.getElementById('outputModeSel');
-const textEngineSel = document.getElementById('textEngineSel');
 const sectionsHintNoteEl = document.getElementById('sectionsHintNote');
 const buildStampEl = document.getElementById('buildStamp');
 const mainLayoutEl = document.getElementById('mainLayout');
@@ -64,8 +62,6 @@ const HIDE_SECTION_META_PREVIEW_KEY = 'pdf_to_md_hide_section_meta_preview';
 const INCLUDE_SECTION_META_FILES_KEY = 'pdf_to_md_include_section_meta_files';
 const AUTO_RUN_ON_SELECT_KEY = 'pdf_to_md_auto_run_on_select';
 const OUTPUT_MODE_KEY = 'pdf_to_md_output_mode';
-const TEXT_ENGINE_KEY = 'pdf_to_md_text_engine';
-const TEXT_ENGINES = ['pymupdf', 'hybrid'];
 const ISSUES_URL = 'https://github.com/pbeens/Pete-s-PDF-to-MD/issues';
 const BUY_COFFEE_URL = 'https://buymeacoffee.com/pbeens';
 const REPO_URL = 'https://github.com/pbeens/Pete-s-PDF-to-MD';
@@ -844,7 +840,6 @@ runBtn.addEventListener('click', async () => {
     window.pdfToMdApi.runConversion(state.inputPdfPath, state.outputRootPath, {
       includeSectionMetadata: state.includeSectionMetaInFiles,
       outputMode: state.outputMode,
-      textEngine: state.textEngine,
     }),
     RUN_CONVERSION_TIMEOUT_MS,
     'Running conversion'
@@ -869,7 +864,13 @@ runBtn.addEventListener('click', async () => {
       await loadSection(firstSection);
     }
     markConversionClean();
-    setStatus('Conversion complete');
+    const warnings = Array.isArray(payload.warnings) ? payload.warnings : [];
+    if (warnings.length) {
+      setStatus(`Conversion complete with ${warnings.length} warning${warnings.length === 1 ? '' : 's'}`);
+      alert(`Conversion finished with warnings:\n\n${warnings.map((w) => `• ${w}`).join('\n\n')}`);
+    } else {
+      setStatus('Conversion complete');
+    }
   }).catch((err) => {
     if (state.activeConversionRunId !== runId) return;
     const message = String(err?.message || err || '');
@@ -1018,26 +1019,6 @@ if (outputModeSel) {
   });
 }
 
-if (textEngineSel) {
-  textEngineSel.addEventListener('change', () => {
-    const nextValue = String(textEngineSel.value || 'pymupdf');
-    const valid = TEXT_ENGINES.includes(nextValue) ? nextValue : 'pymupdf';
-    const changed = valid !== state.textEngine;
-    state.textEngine = valid;
-    textEngineSel.value = state.textEngine;
-    try {
-      localStorage.setItem(TEXT_ENGINE_KEY, state.textEngine);
-    } catch (_err) {
-      // no-op
-    }
-    if (changed && state.inputPdfPath) {
-      markConversionDirty('Conversion options changed');
-    } else {
-      updateRunButtonState();
-    }
-  });
-}
-
 document.addEventListener('click', (event) => {
   if (supportMenuWrapEl && supportMenuEl && !supportMenuEl.hidden) {
     if (!supportMenuWrapEl.contains(event.target)) {
@@ -1108,16 +1089,6 @@ document.addEventListener('click', (event) => {
     }
     if (outputModeSel) {
       outputModeSel.value = state.outputMode;
-    }
-
-    try {
-      const savedTextEngine = String(localStorage.getItem(TEXT_ENGINE_KEY) || '');
-      state.textEngine = TEXT_ENGINES.includes(savedTextEngine) ? savedTextEngine : 'pymupdf';
-    } catch (_err) {
-      state.textEngine = 'pymupdf';
-    }
-    if (textEngineSel) {
-      textEngineSel.value = state.textEngine;
     }
 
     if (typeof window.pdfToMdApi.onConversionProgress === 'function') {

@@ -6,13 +6,20 @@ import math
 import re
 from pathlib import Path
 
-import fitz
+try:
+    import pymupdf as fitz  # PyMuPDF 1.24.3+; the old `fitz` name is deprecated
+except ImportError:
+    import fitz
 
 try:
     # Optional: tagged-PDF headings and the hybrid text engine.
     import pdf_inspector
 except ImportError:
     pdf_inspector = None
+
+
+EMPTY_BODY_PLACEHOLDER = "(No extractable text in this range.)"
+BOOKMARK_FOOTNOTE_RE = re.compile(r"(?<=[a-z]{4})\d{1,3}$")
 
 
 def slugify(value: str) -> str:
@@ -48,6 +55,9 @@ def build_outline_from_toc(doc):
         if len(item) < 3:
             continue
         level, title, page = item[0], clean_line(str(item[1])), int(item[2])
+        # Footnote numbers copied into bookmarks are glued to the last word
+        # ("Effect107"); real numbering has a space ("Part 1", "Appendix 2").
+        title = BOOKMARK_FOOTNOTE_RE.sub("", title)
         if not title:
             continue
         entries.append(
@@ -849,7 +859,7 @@ def deduplicate_body_paragraphs(text: str) -> str:
         kept.append(para)
 
     if not kept:
-        return "(No extractable text in this range.)"
+        return EMPTY_BODY_PLACEHOLDER
     return "\n\n".join(kept)
 
 
@@ -943,7 +953,7 @@ def rebalance_cross_section_footnotes(sections: list[dict]) -> None:
 
         if moved_any:
             sections[i - 1]["body"] = "\n\n".join(prev_paragraphs).strip()
-            sections[i]["body"] = "\n\n".join(curr_paragraphs).strip() or "(No extractable text in this range.)"
+            sections[i]["body"] = "\n\n".join(curr_paragraphs).strip() or EMPTY_BODY_PLACEHOLDER
 
 
 def remove_orphan_markers_after_rebalance(sections: list[dict]) -> None:
@@ -962,7 +972,7 @@ def remove_orphan_markers_after_rebalance(sections: list[dict]) -> None:
         for num in orphan_nums:
             curr_body = re.sub(rf"\s*<sup>{re.escape(num)}</sup>", "", curr_body)
 
-        sections[i]["body"] = re.sub(r"\n{3,}", "\n\n", curr_body).strip() or "(No extractable text in this range.)"
+        sections[i]["body"] = re.sub(r"\n{3,}", "\n\n", curr_body).strip() or EMPTY_BODY_PLACEHOLDER
 
 
 def markdown_table_from_rows(rows: list[list[str]]) -> str:
@@ -981,7 +991,21 @@ def markdown_table_from_rows(rows: list[list[str]]) -> str:
         if any(normalized):
             normalized_rows.append(normalized)
 
-    if len(normalized_rows) < 2:
+    # Merged cells come back as extra columns that are blank in every row.
+    keep = [c for c in range(col_count) if any(row[c] for row in normalized_rows)]
+    if len(keep) < col_count:
+        normalized_rows = [[row[c] for c in keep] for row in normalized_rows]
+        col_count = len(keep)
+    # Merged cells can also stagger one logical column across two (header in one,
+    # values in the next). Fold neighbours that never both hold text in any row.
+    c = 0
+    while c < col_count - 1:
+        if not any(row[c] and row[c + 1] for row in normalized_rows):
+            normalized_rows = [row[:c] + [row[c] or row[c + 1]] + row[c + 2:] for row in normalized_rows]
+            col_count -= 1
+        else:
+            c += 1
+    if col_count < 2 or len(normalized_rows) < 2:
         return ""
 
     def esc(cell: str) -> str:
@@ -1264,7 +1288,7 @@ def cleanup_section_body(body: str, title: str, next_title: str | None = None) -
 
     paragraphs = [p.strip() for p in out.split("\n\n") if p.strip()]
     if not paragraphs:
-        return "(No extractable text in this range.)"
+        return EMPTY_BODY_PLACEHOLDER
 
     # Remove duplicated heading echoed as first paragraph.
     first_para = paragraphs[0].rstrip(":").strip()
@@ -1290,13 +1314,16 @@ def cleanup_section_body(body: str, title: str, next_title: str | None = None) -
 
     out = "\n\n".join(paragraphs).strip()
     if not out:
-        out = "(No extractable text in this range.)"
+        out = EMPTY_BODY_PLACEHOLDER
 
     out = re.sub(r"\n{3,}", "\n\n", out)
     return out
 
 
-def build_section_markdown(title: str, level: int, start: int, end: int, source: str, body: str, include_section_metadata: bool) -> str:
+def build_section_markdown(title: str, level: int, start: int, end: int, source: str, body: str, include_section_metadata: bool, combined: bool = False) -> str:
+    if combined and body == EMPTY_BODY_PLACEHOLDER:
+        # In a combined file the next heading follows directly, so the placeholder is just noise.
+        body = ""
     md_level = max(1, min(6, int(level)))
     heading_prefix = "#" * md_level
     if include_section_metadata:
@@ -1560,7 +1587,7 @@ def write_outputs(
         end = max(start - 1, min(doc.page_count, section_end_page))
 
         if hybrid_bodies is not None:
-            body = clean_hybrid_body(hybrid_bodies[i], furniture) or "(No extractable text in this range.)"
+            body = clean_hybrid_body(hybrid_bodies[i], furniture) or EMPTY_BODY_PLACEHOLDER
             body = format_dot_leader_blocks(body)
             body = deduplicate_body_paragraphs(body)
             section_rows.append(
@@ -1596,7 +1623,7 @@ def write_outputs(
                 pages_text.append("\n\n".join(blocks))
 
         next_title = next_entry["title"] if has_next else None
-        body = "\n\n".join(pages_text).strip() or "(No extractable text in this range.)"
+        body = "\n\n".join(pages_text).strip() or EMPTY_BODY_PLACEHOLDER
         body = cleanup_section_body(body, current["title"], next_title=next_title)
         body = improve_readability(body)
         body = normalize_footnote_block_breaks(body)
@@ -1741,6 +1768,7 @@ def write_outputs(
                         entry["source"],
                         body,
                         include_section_metadata,
+                        combined=True,
                     ).strip()
                 )
             (output_md_dir / file_name).write_text("\n\n".join(chunk_markdown) + "\n", encoding="utf-8")
@@ -1782,6 +1810,7 @@ def write_outputs(
                     entry["source"],
                     body,
                     include_section_metadata,
+                    combined=True,
                 ).strip()
             )
         (output_md_dir / file_name).write_text("\n\n".join(chunk_markdown) + "\n", encoding="utf-8")

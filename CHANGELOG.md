@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented in this file.
 
-## [Unreleased]
+## [0.8.0] - 2026-10-25
 
 ### Fixed
 
@@ -13,14 +13,23 @@ All notable changes to this project are documented in this file.
 - 5-column tables (for example, the course list) no longer get an achievement-chart `Categories / Level 1–4` header unless their cells read like an achievement chart.
 - Duplicate `Categories / Level 1–4` header rows inside achievement charts are removed again.
 - Long or sentence-like numbered list items (`3. Students discuss their choices …`) are no longer detected as headings.
+- Tables no longer carry empty columns left behind by merged cells, and a column split across two (header in one, values in the next) is folded back into one. On `Digital-Technology…pdf` the course table goes from 7 columns to 5 and the achievement charts from 13 to 5.
+- Footnote numbers glued to bookmark titles are removed (`Avoiding the Dunning–Kruger Effect107` → `Avoiding the Dunning–Kruger Effect`). Numbering with a space, such as `Part 1`, is kept.
+- `One file` and `By major heading` output no longer shows `(No extractable text in this range.)` under headings that are immediately followed by the next heading.
+
+### Changed
+
+- Works with PyMuPDF 2.0, which deprecates the old `fitz` module name: the app now imports `pymupdf` and falls back to `fitz` on older versions.
+- README states plainly that the app uses the Python installed on the computer, including for the downloaded app.
 
 ### Added
 
 - Warning when the installed PyMuPDF is older than 1.23 and has no table detection. Previously, tables were silently written as plain text.
+- Conversion warnings now appear in a dialog when the conversion finishes. Before, they flashed by in the status line and were replaced within a second.
 - Tagged-PDF headings: when a PDF has no bookmarks but is tagged for accessibility, the outline comes from its H1–H6 tags (requires the optional `pdf-inspector` package). On `ICD2O_Curriculum.pdf` this gives exactly the document's 101 headings at their real levels. Tags are also preferred over bookmarks when the bookmarks are flat and the tags have more levels (e.g. `AI-in-Education.pdf`: 172 single-level bookmarks become a three-level Part/chapter/section outline). Superscript footnote numbers are stripped from tagged heading titles.
-- Experimental `Engine: Hybrid (pdf-inspector)` option in the GUI (`--text-engine hybrid` on the CLI). It takes body text from pdf-inspector (correct word spacing, bold/italic, multi-column order, about 10× faster) and applies this app's cleanup: ToC tables, margin-label and running-header removal, list spacing, and sentence re-joining. It falls back to PyMuPDF with a warning when `pdf-inspector` is not installed.
+- Experimental hybrid text engine, command line only (`--text-engine hybrid`). It takes body text from pdf-inspector (correct word spacing, bold/italic, multi-column order, about 10× faster) and applies this app's cleanup: ToC tables, margin-label and running-header removal, list spacing, and sentence re-joining. It falls back to PyMuPDF with a warning when `pdf-inspector` is not installed.
 
-## [0.7.1] - Unreleased
+## [0.7.1] - 2026-03-18
 
 ### Added
 
