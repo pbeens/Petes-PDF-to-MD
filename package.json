@@ -11,7 +11,9 @@
     "test": "npm run test:smoke && npm run test:regression",
     "gui": "electron ./electron/main.cjs",
     "gui:dev": "electron ./electron/main.cjs",
+    "gui:debug": "PDF_TO_MD_DEBUG=1 electron ./electron/main.cjs",
     "build:mac": "./scripts/build-mac.sh",
+    "build:mac:debug": "./scripts/build-mac.sh --debug",
     "version:show": "node ./scripts/bump-revision.js --print",
     "build:win": "electron-builder --win nsis",
     "release:prep": "./scripts/release-prep.sh"
@@ -49,6 +51,6 @@
       "artifactName": "Pete-s-PDF-to-MD-v${version}-macOS.${ext}"
     }
   },
-  "buildRevision": "a",
+  "buildRevision": "c",
   "buildRevisionOf": "0.8.0"
 }

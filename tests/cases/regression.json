@@ -71,6 +71,51 @@
     "notes": "v0.7.2 dropped every paragraph starting with a number and a capital letter, including footnotes."
   },
   {
+    "id": "HEAD-001",
+    "name": "Separate tagged headings stacked on one page are not joined",
+    "fromVersion": "0.8.0",
+    "priority": "regression",
+    "automation": "automated",
+    "fixture": "tests/pdfs/AI-in-Education.pdf",
+    "check": "outline_titles",
+    "needsTags": true,
+    "expectTitles": [
+      "Part 1",
+      "What Should Students Learn?",
+      "The Impact of AI on Curriculum"
+    ],
+    "notes": "Skipped when pdf-inspector or the fixture is missing."
+  },
+  {
+    "id": "PAGENUM-001",
+    "name": "Page numbers next to the running header are removed and footnotes stay out of body text",
+    "fromVersion": "0.8.0",
+    "priority": "regression",
+    "automation": "automated",
+    "fixture": "tests/pdfs/AI-in-Education.pdf",
+    "check": "text_rules",
+    "mode": "single",
+    "expectText": [
+      "in-depth academic piece",
+      "4 Dr Roger Schank"
+    ],
+    "rejectPatterns": [
+      "^7 academic piece",
+      "^8 9$",
+      "Syllogism 7"
+    ],
+    "notes": "Skipped when the fixture is missing."
+  },
+  {
+    "id": "DEBUG-001",
+    "name": "Debug builds write output to a per-version folder that plain runs leave untouched",
+    "fromVersion": "0.8.0",
+    "priority": "regression",
+    "automation": "automated",
+    "fixture": "tests/pdfs/Science SNC1W.pdf",
+    "check": "version_subdir"
+  },
+  {
     "id": "NOISE-001",
     "name": "Recurring running headers/footers are filtered",
     "fromVersion": "0.7.2",

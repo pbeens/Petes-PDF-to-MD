@@ -93,6 +93,11 @@ In the packaged GUI, the default output root is:
 
 - `~/Documents/Pete's PDF to MD Output`
 
+## Debug Builds and Revision Letters
+
+- Every macOS build advances `buildRevision` in `package.json` (`0.8.0a`, `0.8.0b`, …) via `scripts/bump-revision.js`; commit that change with the build.
+- `npm run build:mac:debug` bakes `debugBuild: true` into the bundled `package.json`. Debug builds show "(debug version)" in the title bar and pass `--out-subdir v<version><letter>` so output lands in `<output>/<PDF name>/v0.8.0b/`. `PDF_TO_MD_DEBUG=1` (or `npm run gui:debug`) does the same from source.
+
 ## Development Workflows
 
 ### Install

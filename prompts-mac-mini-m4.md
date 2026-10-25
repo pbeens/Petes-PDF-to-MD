@@ -4,6 +4,14 @@ Prompt log from the Mac mini M4 (`m4-mini`). Another computer may have its own l
 
 Sources: entries from 2026-10-24 were logged live. Entries from 2026-02-26 14:58 to 2026-04-02 were reconstructed on 2026-10-24 from local Codex session transcripts (`~/.codex/sessions`). Entries up to 2026-02-26 14:54 come from the last committed `prompts.md` (git `afc792e`), deleted in `4057ab6`; their times are converted from UTC, and the first 18 share one bulk-logged time.
 
+## 2026-10-25 05:30
+
+- **Goal:** Fix glued tagged headings and footnote/page-number leakage; add a debug mode.
+- **Prompt:** Fix the joined "Part 1 / What Should Students Learn?" heading and the footnotes and page numbers landing in body text. Add a debug mode that writes each conversion into a per-version folder (like the hand-made `v0.8.0a`) so older outputs are kept for comparison, and shows "(debug version)" in the title bar.
+- **Host:** m4-mini
+- **Agent:** Claude Code
+- **Context:** Stricter tag-line joining; top-of-page page numbers removed; footnotes split by small font; header rule moved to page position; `--out-subdir` plus `build:mac:debug` / `gui:debug`. Tests HEAD-001, PAGENUM-001, DEBUG-001 added. Debug DMG v0.8.0c (the v0.8.0b debug build had a single-file naming bug and was deleted).
+
 ## 2026-10-25 05:15
 
 - **Goal:** Make each build identifiable.

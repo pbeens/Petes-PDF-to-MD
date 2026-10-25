@@ -7,6 +7,7 @@ function parseArgs(argv) {
   const opts = {
     input: '',
     outDir: 'output',
+    outSubdir: '',
     engine: 'auto',
     maxSectionChars: '8000',
     includeSectionMetadata: '1',
@@ -20,6 +21,8 @@ function parseArgs(argv) {
       opts.input = argv[++i] || '';
     } else if (arg === '--out-dir' || arg === '-o') {
       opts.outDir = argv[++i] || 'output';
+    } else if (arg === '--out-subdir') {
+      opts.outSubdir = argv[++i] || '';
     } else if (arg === '--engine') {
       opts.engine = (argv[++i] || 'auto').toLowerCase();
     } else if (arg === '--max-section-chars') {
@@ -59,7 +62,7 @@ function printHelp() {
     'Usage: node scripts/phase1.js --input <file.pdf> [--out-dir output] '
     + '[--engine auto|pymupdf] [--max-section-chars 8000] '
     + '[--include-section-metadata 1|0] [--conversion-mode single|major|sections] '
-    + '[--text-engine pymupdf|hybrid]'
+    + '[--text-engine pymupdf|hybrid] [--out-subdir v0.8.0b]'
   );
 }
 
@@ -196,6 +199,7 @@ function run() {
       '--include-section-metadata', String(opts.includeSectionMetadata),
       '--conversion-mode', String(opts.conversionMode),
       '--text-engine', String(opts.textEngine),
+      ...(opts.outSubdir ? ['--out-subdir', String(opts.outSubdir)] : []),
     ],
     { stdio: 'inherit', windowsHide: true }
   );

@@ -13,19 +13,32 @@ const ALLOWED_EXTERNAL_URLS = new Set([
   'https://buymeacoffee.com/pbeens',
 ]);
 
-// Version plus build revision letter (0.8.0a); package.json is bundled with the app.
-function getDisplayVersion() {
-  let revision = '';
+function readBundledPackage() {
+  // package.json is bundled with the app; debug builds get debugBuild=true baked in.
   try {
-    revision = String(require('../package.json').buildRevision || '');
+    return require('../package.json');
   } catch (_err) {
-    // no-op
+    return {};
   }
-  return `${app.getVersion()}${revision}`;
+}
+
+// Version plus build revision letter (0.8.0a).
+function getDisplayVersion() {
+  return `${app.getVersion()}${String(readBundledPackage().buildRevision || '')}`;
+}
+
+// Debug builds (npm run build:mac:debug) or PDF_TO_MD_DEBUG=1 write each version's
+// output to its own folder so earlier results stay available for comparison.
+function isDebugMode() {
+  return process.env.PDF_TO_MD_DEBUG === '1' || readBundledPackage().debugBuild === true;
+}
+
+function getVersionSubdir() {
+  return isDebugMode() ? `v${getDisplayVersion()}` : '';
 }
 
 function buildWindowTitle() {
-  return `Pete's PDF to MD v${getDisplayVersion()}`;
+  return `Pete's PDF to MD v${getDisplayVersion()}${isDebugMode() ? ' (debug version)' : ''}`;
 }
 
 function createWindow() {
@@ -80,7 +93,8 @@ function normalizeOutputRoot(outputRootPath) {
 function getOutputDirForInput(inputPdfPath, outputRootPath) {
   const outputRoot = normalizeOutputRoot(outputRootPath);
   const baseName = path.basename(inputPdfPath, path.extname(inputPdfPath));
-  return path.join(outputRoot, baseName);
+  const versionSubdir = getVersionSubdir();
+  return versionSubdir ? path.join(outputRoot, baseName, versionSubdir) : path.join(outputRoot, baseName);
 }
 
 function safeRead(filePath) {
@@ -376,6 +390,7 @@ ipcMain.handle('get-app-meta', async () => {
     startedAt: APP_STARTED_AT.toISOString(),
     isPackaged: app.isPackaged,
     title: buildWindowTitle(),
+    debug: isDebugMode(),
   };
 });
 
@@ -411,6 +426,7 @@ ipcMain.handle('run-conversion', async (event, inputPdfPath, outputRootPath, con
         '--out-dir', outputRoot,
         '--include-section-metadata', includeSectionMetadata ? '1' : '0',
         '--conversion-mode', outputMode,
+        ...(getVersionSubdir() ? ['--out-subdir', getVersionSubdir()] : []),
       ],
       {
         cwd: conversionCwd,

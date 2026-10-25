@@ -153,12 +153,24 @@ def build_outline_from_tags(pdf_path: Path) -> list[dict]:
         role = roles[key]
         level = int(role[1]) if len(role) > 1 else 1
         # A heading that wraps onto a second marked-content run continues the previous one.
+        # Separate headings stacked on one page ("Part 1" / "What Should Students Learn?")
+        # share the role too, so also require the same font size and an unfinished first
+        # line: it ends on a lowercase word ("Promises and Implications for") or the next
+        # run starts in lowercase.
+        prev_text = entries[-1]["title"] if entries else ""
+        last_word = prev_text.split()[-1] if prev_text.split() else ""
+        unfinished = (
+            not re.search(r"[.?!:]$", prev_text)
+            and (last_word[:1].islower() or title[:1].islower())
+        )
         if (
             entries
             and prev_key is not None
             and key[0] == prev_key[0]
             and key[1] == prev_key[1] + 1
             and roles[prev_key] == role
+            and abs(runs[key][0].font_size - runs[prev_key][0].font_size) <= 0.5
+            and unfinished
         ):
             entries[-1]["title"] = clean_line(f"{entries[-1]['title']} {title}")
         else:
@@ -576,7 +588,8 @@ def improve_readability(text: str) -> str:
     # Avoid converting table-like rows such as "19 | Header ...".
     out = re.sub(r"(?m)^(\d{1,3})\s+(?!\|)", r"<sup>\1</sup> ", out)
     # Inline footnote markers attached to punctuation: "...strategies;6 " -> "...strategies;<sup>6</sup> "
-    out = re.sub(r"([;:,\.\)])(\d{1,3})(?=\s)", r"\1<sup>\2</sup>", out)
+    # (also after closing quotes: "clarity is power.”11")
+    out = re.sub(r"([;:,\.\)”’\"])(\d{1,3})(?=\s|$)", r"\1<sup>\2</sup>", out, flags=re.M)
     out = re.sub(r"\n{3,}", "\n\n", out)
     return out
 
@@ -592,6 +605,10 @@ def attach_missing_footnote_markers(text: str) -> str:
         num = match.group(1)
         prev = paragraphs[idx - 1]
         if f"<sup>{num}</sup>" in prev:
+            continue
+        # A paragraph cut off mid-sentence is a page break before the footnote block,
+        # not the place the marker was lost (its marker may be in another section).
+        if not re.search(r"[.!?:;)\"”’]$", prev.rstrip()):
             continue
         paragraphs[idx - 1] = prev.rstrip() + f" <sup>{num}</sup>"
 
@@ -1251,6 +1268,10 @@ def lines_to_paragraphs(lines: list[dict]) -> list[str]:
     lines = list(lines)
     baseline_x = min(line["x0"] for line in lines)
     bullet_pattern = re.compile(r"^([•\-*]|\d+\.)\s+")
+    # Footnotes are set in small print; each one that starts with its number begins
+    # a new paragraph, so consecutive footnotes are not run together.
+    sizes = sorted(line.get("size", 0.0) for line in lines if line.get("size"))
+    body_size = sizes[len(sizes) // 2] if sizes else 0.0
     paragraphs = []
     current = []
     current_is_bullet = False
@@ -1289,7 +1310,12 @@ def lines_to_paragraphs(lines: list[dict]) -> list[str]:
             and indent_delta >= (prev_indent_delta - 1.0)
             and gap <= 10.0
         )
-        starts_new = y_reset or (gap > 4.0 and not continuation_of_bullet) or bullet or (
+        footnote_start = (
+            body_size > 0
+            and 0 < line.get("size", 0.0) <= 0.8 * body_size
+            and re.match(r"^\d{1,3}\s+\S", text) is not None
+        )
+        starts_new = y_reset or footnote_start or (gap > 4.0 and not continuation_of_bullet) or bullet or (
             indent_delta - prev_indent_delta > 8.0 and not continuation_of_bullet
         )
 
@@ -1493,10 +1519,20 @@ def page_blocks(page, y_min=None, y_max=None, margin_noise_profile=None):
                     and y1 >= bottom_band
                     and norm in margin_noise_profile.get("bottom", set())
                 )
-                is_page_footer = page_number_like and y1 >= bottom_band
-                if is_top_noise or is_bottom_noise or is_page_footer:
+                # Page numbers sit in the footer or, in many books, next to the running header.
+                is_page_number = page_number_like and (y1 >= bottom_band or y0 <= top_band)
+                # Running headers with the page number in front ("12 Artificial Intelligence in
+                # Education"). Judged by position: the same pattern at the bottom is a footnote.
+                is_numbered_header = (
+                    y0 <= top_band
+                    and re.match(r"^\d{1,3}\s+[A-Z]", text) is not None
+                    and len(text.split()) <= 12
+                    and not re.search(r"[.!?;:)\"”’]$", text)
+                )
+                if is_top_noise or is_bottom_noise or is_page_number or is_numbered_header:
                     continue
-                lines.append({"x0": x0, "x1": x1, "y0": y0, "y1": y1, "text": text})
+                size = max((float(sp.get("size", 0) or 0) for sp in line.get("spans", [])), default=0.0)
+                lines.append({"x0": x0, "x1": x1, "y0": y0, "y1": y1, "text": text, "size": size})
 
     if not lines and not tables:
         return []
@@ -1606,15 +1642,6 @@ def cleanup_section_body(body: str, title: str, next_title: str | None = None) -
         para_norm = normalize_match_text(para)
         # Drop running headers/footers such as "... Affiliates 3".
         if re.search(r"\baffiliates\s+\d{1,3}\s*$", para, flags=re.IGNORECASE):
-            continue
-        # Drop page-header variants that prepend page numbers ("12 Artificial Intelligence
-        # in Education"). Footnotes look the same ("2 The word parent(s) is used ..."),
-        # so only short lines that do not end like a sentence count as headers.
-        if (
-            re.match(r"^\d{1,3}\s+[A-Z]", para)
-            and len(para.split()) <= 12
-            and not re.search(r"[.!?;:)\"”’]$", para)
-        ):
             continue
         # Drop header strings that mirror the section title: the title alone, the title
         # plus a page number, or a truncated copy of it. A real paragraph that merely
@@ -1853,6 +1880,7 @@ def write_outputs(
     conversion_mode: str,
     emit_generated_toc: bool = False,
     hybrid_markdown: str | None = None,
+    doc_name: str | None = None,
 ):
     output_md_dir, output_rel_prefix = prepare_output_dirs(out_dir, conversion_mode)
     margin_noise_profile = build_margin_noise_profile(doc)
@@ -2126,7 +2154,8 @@ def write_outputs(
                 }
             )
     elif conversion_mode == "single":
-        file_name = f"{out_dir.name}.md"
+        # Named after the PDF, not the folder (debug builds add a version folder).
+        file_name = f"{doc_name or out_dir.name}.md"
         section_path = f"{output_rel_prefix}{file_name}"
         if normalized:
             normalized[0]["section_file"] = section_path
@@ -2193,6 +2222,11 @@ def main():
     parser = argparse.ArgumentParser(description="Phase 1 outline extraction and split planner")
     parser.add_argument("--input", "-i", required=True, help="Input PDF path")
     parser.add_argument("--out-dir", "-o", default="output", help="Output directory root")
+    parser.add_argument(
+        "--out-subdir",
+        default="",
+        help="Extra folder inside <out-dir>/<pdf name>/ (debug builds use the version, e.g. v0.8.0b)",
+    )
     parser.add_argument("--max-section-chars", type=int, default=8000, help="Max chars per section chunk")
     parser.add_argument(
         "--include-section-metadata",
@@ -2279,6 +2313,8 @@ def main():
 
     base = input_path.stem
     out_dir = Path(args.out_dir).expanduser().resolve() / base
+    if args.out_subdir:
+        out_dir = out_dir / Path(args.out_subdir).name
     print("PROGRESS: Writing outline and section markdown files", flush=True)
     normalized, segments = write_outputs(
         doc,
@@ -2289,6 +2325,7 @@ def main():
         args.conversion_mode,
         emit_generated_toc=has_embedded_toc,
         hybrid_markdown=hybrid_markdown,
+        doc_name=base,
     )
     print("PROGRESS: Finalizing output indexes", flush=True)
 

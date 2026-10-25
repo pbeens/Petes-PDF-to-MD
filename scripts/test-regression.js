@@ -71,7 +71,8 @@ function findMarkdownFiles(dir) {
 function executeAutomatedCase(testCase) {
   const fixtureAbs = path.join(ROOT, testCase.fixture || '');
   assert(testCase.fixture, 'Missing fixture path');
-  assert(fs.existsSync(fixtureAbs), `Fixture not found: ${testCase.fixture}`);
+  // Test PDFs are not committed; a machine without this one skips the case.
+  if (!fs.existsSync(fixtureAbs)) throw new SkipCase(`Fixture not found: ${testCase.fixture}`);
 
   const caseRunDir = path.join(RUNS_ROOT, testCase.id);
   cleanDir(caseRunDir);
@@ -123,6 +124,55 @@ function executeAutomatedCase(testCase) {
     const text = findMarkdownFiles(docDir).map((f) => fs.readFileSync(f, 'utf8')).join('\n');
     assert(text.includes(testCase.expectText), `Missing footnote text: ${testCase.expectText}`);
     return { outputDir: docDir };
+  }
+
+  if (testCase.check === 'outline_titles') {
+    const child = runPhase1(['--input', fixtureAbs, '--out-dir', caseRunDir, '--conversion-mode', 'single']);
+    assert(child.status === 0, `Expected exit 0, got ${child.status}`);
+    if (testCase.needsTags && String(child.stdout).includes('pdf-inspector is not installed')) {
+      throw new SkipCase('pdf-inspector is not installed for the Python in use');
+    }
+    const docDir = toDocDir(caseRunDir, fixtureAbs);
+    const titles = JSON.parse(fs.readFileSync(path.join(docDir, 'outline.json'), 'utf8')).map((item) => item.title);
+    if (testCase.needsTags && !JSON.parse(fs.readFileSync(path.join(docDir, 'outline.json'), 'utf8')).some((i) => i.source === 'pdf-tags')) {
+      throw new SkipCase('Tagged headings were not used (pdf-inspector unavailable)');
+    }
+    for (const title of testCase.expectTitles || []) {
+      assert(titles.includes(title), `Missing outline title: ${title}`);
+    }
+    return { outputDir: docDir, headings: titles.length };
+  }
+
+  if (testCase.check === 'text_rules') {
+    const child = runPhase1(['--input', fixtureAbs, '--out-dir', caseRunDir, '--conversion-mode', testCase.mode || 'single']);
+    assert(child.status === 0, `Expected exit 0, got ${child.status}`);
+    const docDir = toDocDir(caseRunDir, fixtureAbs);
+    const text = findMarkdownFiles(docDir).map((f) => fs.readFileSync(f, 'utf8')).join('\n');
+    for (const expected of testCase.expectText || []) {
+      assert(text.includes(expected), `Missing text: ${expected}`);
+    }
+    for (const pattern of testCase.rejectPatterns || []) {
+      assert(!new RegExp(pattern, 'm').test(text), `Unexpected text matching /${pattern}/`);
+    }
+    return { outputDir: docDir };
+  }
+
+  if (testCase.check === 'version_subdir') {
+    const sub = 'v9.9.9z';
+    let child = runPhase1(['--input', fixtureAbs, '--out-dir', caseRunDir, '--conversion-mode', 'sections', '--out-subdir', sub]);
+    assert(child.status === 0, `Expected exit 0, got ${child.status}`);
+    const docDir = toDocDir(caseRunDir, fixtureAbs);
+    const versionDir = path.join(docDir, sub);
+    assert(fs.existsSync(path.join(versionDir, 'outline.json')), 'Missing outline.json in version folder');
+    const singleRun = runPhase1(['--input', fixtureAbs, '--out-dir', path.join(caseRunDir, 'single'), '--conversion-mode', 'single', '--out-subdir', sub]);
+    assert(singleRun.status === 0, `Expected exit 0 for single run, got ${singleRun.status}`);
+    const singleMd = path.join(toDocDir(path.join(caseRunDir, 'single'), fixtureAbs), sub, `${path.parse(fixtureAbs).name}.md`);
+    assert(fs.existsSync(singleMd), `Single-mode file in version folder should be named after the PDF: ${path.basename(singleMd)}`);
+    const before = findMarkdownFiles(versionDir).length;
+    child = runPhase1(['--input', fixtureAbs, '--out-dir', caseRunDir, '--conversion-mode', 'single']);
+    assert(child.status === 0, `Expected exit 0 for plain run, got ${child.status}`);
+    assert(findMarkdownFiles(versionDir).length === before, 'A plain run changed files in the version folder');
+    return { outputDir: versionDir, files: before };
   }
 
   if (testCase.check === 'front_matter_present') {

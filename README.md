@@ -66,6 +66,8 @@ Then install the packages above (`python -m pip install --upgrade pymupdf pdf-in
 
 Each macOS build gets the next revision letter (`0.8.0a`, `0.8.0b`, …) so you can tell builds apart. The same version appears in the app's window title and build stamp. The letter is stored in `package.json` (`buildRevision`) and restarts at `a` when the version changes. Show the current one with `npm run version:show`.
 
+Debug builds (`npm run build:mac:debug`, file `…v0.8.0b-debug-macOS.dmg`) show "(debug version)" in the title bar and write each conversion to a per-version folder, `<output folder>/<PDF name>/v0.8.0b/`, so results from earlier builds are kept for comparison. Normal runs only replace the `.md` files directly in `<PDF name>/`, never these folders. When running from source, `npm run gui:debug` does the same.
+
 ### Windows (PowerShell)
 
 1. `npm install`

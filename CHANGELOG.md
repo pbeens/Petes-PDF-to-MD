@@ -18,6 +18,10 @@ All notable changes to this project are documented in this file.
 - `One file` and `By major heading` output no longer shows `(No extractable text in this range.)` under headings that are immediately followed by the next heading.
 - Document text is no longer deleted by the v0.7.2 page-header cleanup. It removed every paragraph that began with a number and a capital letter, which included all numbered footnotes (`2 The word parent(s) is used …`), and any short paragraph that began with the section title. On `AI-in-Education.pdf` v0.7.2a lost about 66,000 characters (258 distinct words); now only short, header-like lines and exact title echoes are removed.
 - `AGENTS.md` had leftover merge-conflict markers.
+- Separate tagged headings stacked on one page are no longer joined into one (`Part 1 What Should Students Learn? The Impact of AI on Curriculum` is three headings again). Lines are joined only when the font size matches and the first line is unfinished.
+- Page numbers printed next to the running header (top of the page) are removed. They used to be glued to the next page's first line (`7 academic piece…`), which then looked like a footnote and was moved to the end of the section. On `AI-in-Education.pdf` such glued paragraphs drop from 139 to 4.
+- Footnotes are split by their small print, so consecutive footnotes are no longer run together (111 → 13 on `AI-in-Education.pdf`). Short footnotes such as `4 Dr Roger Schank, https://…` are no longer mistaken for page headers: the number-led header rule now applies only to the top of the page.
+- Footnote markers after a closing quote (`clarity is power.”11`) are recognised, and a missing marker is no longer attached to a sentence cut off at a page break (`in-depth 10 academic piece`).
 - Conversion is much faster with PyMuPDF 2.0: `AI-in-Education.pdf` (242 pages) drops from about 42 s to 7 s. When the optional `pymupdf-layout` package is installed, PyMuPDF 2.0's table finder runs an AI layout model on every page; the app now turns that off, so results also no longer depend on whether that package is present. Tables are also detected once per page instead of once per section.
 - Table cells no longer repeat text when detected cells overlap (a merged cell over split ones); each word now goes to one cell only.
 
@@ -31,6 +35,8 @@ All notable changes to this project are documented in this file.
 ### Added
 
 - Warning when the installed PyMuPDF is older than 1.23 and has no table detection. Previously, tables were silently written as plain text.
+- Debug builds (`npm run build:mac:debug`): "(debug version)" in the title bar, and output written to a per-version folder (`<PDF name>/v0.8.0b/`) so earlier builds' results are kept. `npm run gui:debug` does the same from source; `--out-subdir` on the CLI.
+- Regression tests `HEAD-001`, `PAGENUM-001` and `DEBUG-001`. A test whose PDF is missing on this machine is now skipped instead of failed.
 - Build revision letters: each macOS build is named `0.8.0a`, `0.8.0b`, … in the DMG filename, window title and build stamp, so you can tell which build you are running.
 - Conversion warnings now appear in a dialog when the conversion finishes. Before, they flashed by in the status line and were replaced within a second.
 - Tagged-PDF headings: when a PDF has no bookmarks but is tagged for accessibility, the outline comes from its H1–H6 tags (requires the optional `pdf-inspector` package). On `ICD2O_Curriculum.pdf` this gives exactly the document's 101 headings at their real levels. Tags are also preferred over bookmarks when the bookmarks are flat and the tags have more levels (e.g. `AI-in-Education.pdf`: 172 single-level bookmarks become a three-level Part/chapter/section outline). Superscript footnote numbers are stripped from tagged heading titles.
