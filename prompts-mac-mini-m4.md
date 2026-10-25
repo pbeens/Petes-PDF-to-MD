@@ -10,7 +10,7 @@ Sources: entries from 2026-10-24 were logged live. Entries from 2026-02-26 14:58
 - **Prompt:** Unhappy that the app relies on Python already installed on the computer; asked whether a Rust version is feasible. Asked what to do with the current branch, then asked to release it as v0.8.0 (significant change) and build it overnight without interaction. Do not publish to GitHub.
 - **Host:** m4-mini
 - **Agent:** Claude Code
-- **Context:** Hybrid engine moved to CLI-only; warnings shown in a GUI dialog; table empty/staggered column cleanup; bookmark footnote numbers stripped; PyMuPDF 2.0 import fix; DMG built locally. Rust/Tauri rewrite proposed as the next step.
+- **Context:** Hybrid engine moved to CLI-only; warnings shown in a GUI dialog; table empty/staggered column cleanup; bookmark footnote numbers stripped; PyMuPDF 2.0 import fix. Merged unpulled v0.7.2/v0.7.2a commits from GitHub and fixed a v0.7.2 cleanup rule that deleted footnotes and other text. Smoke and regression tests pass; DMG built locally, nothing pushed. Rust/Tauri rewrite proposed as the next step.
 
 ## 2026-10-24 21:50
 
