@@ -1,4 +1,4 @@
-# Pete's PDF to MD
+﻿# Pete's PDF to MD
 
 Download the latest app from GitHub Releases: [https://github.com/pbeens/Pete-s-PDF-to-MD/releases](https://github.com/pbeens/Pete-s-PDF-to-MD/releases)
 
@@ -34,6 +34,22 @@ Install or upgrade PyMuPDF:
 
 Building from source also needs Node.js 20+ (includes `npm`).
 
+### Running from source: use a virtual environment (recommended)
+
+The downloaded app does not use a virtual environment; it looks for Python on the system (see above). When running from source, a local `.venv` keeps this project's packages separate. `npm run gui` and `npm run phase1` use the project's `.venv` automatically when it exists.
+
+From the project root, create a local virtual environment named `.venv`:
+
+- macOS/Linux: `python3 -m venv .venv`
+- Windows (PowerShell): `py -m venv .venv`
+
+Activate it before installing Python packages:
+
+- macOS/Linux: `source .venv/bin/activate`
+- Windows (PowerShell): `.\.venv\Scripts\Activate.ps1`
+
+Then install the packages above (`python -m pip install --upgrade pymupdf pdf-inspector`).
+
 ## Build From Source
 
 ### macOS
@@ -45,7 +61,6 @@ Building from source also needs Node.js 20+ (includes `npm`).
 4. Build release artifact (DMG):
    `npm run release:prep -- --version 0.8.0 --build`
 
-Release artifact:
 
 - `dist/Pete-s-PDF-to-MD-v0.8.0-macOS.dmg`
 
@@ -73,12 +88,16 @@ Build notes:
 
 ## Project Status
 
-Early setup phase.
+Active development (usable beta).
 
 Current priority:
 
 - extract a reliable heading outline from PDFs
 - use headings to split output into smaller sub-documents for LLM workflows
+
+Future considerations:
+
+- add a search function in the app to quickly find sections/content within converted output
 
 ## Planning
 
@@ -95,7 +114,7 @@ Current Phase 1 implements heading outline extraction and split planning using a
 
 Run:
 
-- `npm run phase1 -- --input "test-data/pdfs/<file>.pdf"`
+- `npm run phase1 -- --input "tests/pdfs/<file>.pdf"`
 
 Experimental, command line only: `--text-engine hybrid` takes body text from `pdf-inspector` (better word spacing, bold/italic, multi-column order) and applies this app's cleanup. It needs `pdf-inspector` installed and falls back to PyMuPDF with a warning otherwise.
 
@@ -208,3 +227,4 @@ Notes:
 ## License
 
 This project is licensed under GPL-3.0. See `LICENSE`.
+

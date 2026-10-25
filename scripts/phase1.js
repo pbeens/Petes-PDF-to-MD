@@ -41,14 +41,14 @@ function parseArgs(argv) {
   }
 
   if (!opts.input) {
-    const defaultPdf = findFirstPdf(path.join(process.cwd(), 'test-data', 'pdfs'));
+    const defaultPdf = findFirstPdf(path.join(process.cwd(), 'tests', 'pdfs'));
     if (defaultPdf) {
       opts.input = defaultPdf;
     }
   }
 
   if (!opts.input) {
-    throw new Error('No input PDF provided and none found in test-data/pdfs.');
+    throw new Error('No input PDF provided and none found in tests/pdfs.');
   }
 
   return opts;
@@ -98,6 +98,11 @@ function findPythonCandidates() {
 
   add(process.env.PDF_TO_MD_PYTHON);
   add(process.env.PYTHON_BIN);
+  // Project virtual environment, when running from source.
+  const venvDir = path.resolve(__dirname, '..', '.venv');
+  add(process.platform === 'win32'
+    ? path.join(venvDir, 'Scripts', 'python.exe')
+    : path.join(venvDir, 'bin', 'python3'));
   add('python3');
   add('python');
   add('/opt/homebrew/bin/python3');

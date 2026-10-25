@@ -16,20 +16,51 @@ All notable changes to this project are documented in this file.
 - Tables no longer carry empty columns left behind by merged cells, and a column split across two (header in one, values in the next) is folded back into one. On `Digital-Technology…pdf` the course table goes from 7 columns to 5 and the achievement charts from 13 to 5.
 - Footnote numbers glued to bookmark titles are removed (`Avoiding the Dunning–Kruger Effect107` → `Avoiding the Dunning–Kruger Effect`). Numbering with a space, such as `Part 1`, is kept.
 - `One file` and `By major heading` output no longer shows `(No extractable text in this range.)` under headings that are immediately followed by the next heading.
+- Document text is no longer deleted by the v0.7.2 page-header cleanup. It removed every paragraph that began with a number and a capital letter, which included all numbered footnotes (`2 The word parent(s) is used …`), and any short paragraph that began with the section title. On `AI-in-Education.pdf` v0.7.2a lost about 66,000 characters (258 distinct words); now only short, header-like lines and exact title echoes are removed.
+- `AGENTS.md` had leftover merge-conflict markers.
 
 ### Changed
 
 - Works with PyMuPDF 2.0, which deprecates the old `fitz` module name: the app now imports `pymupdf` and falls back to `fitz` on older versions.
 - README states plainly that the app uses the Python installed on the computer, including for the downloaded app.
+- For a tagged PDF without bookmarks, single-file output now uses the tagged headings instead of the v0.7.2 one-heading fallback. The fallback still applies when there are neither bookmarks nor tags.
+- When run from source, the converter uses the project's `.venv` Python automatically if it exists.
 
 ### Added
 
 - Warning when the installed PyMuPDF is older than 1.23 and has no table detection. Previously, tables were silently written as plain text.
 - Conversion warnings now appear in a dialog when the conversion finishes. Before, they flashed by in the status line and were replaced within a second.
 - Tagged-PDF headings: when a PDF has no bookmarks but is tagged for accessibility, the outline comes from its H1–H6 tags (requires the optional `pdf-inspector` package). On `ICD2O_Curriculum.pdf` this gives exactly the document's 101 headings at their real levels. Tags are also preferred over bookmarks when the bookmarks are flat and the tags have more levels (e.g. `AI-in-Education.pdf`: 172 single-level bookmarks become a three-level Part/chapter/section outline). Superscript footnote numbers are stripped from tagged heading titles.
+- Regression tests: `TAGS-001` (tagged headings) and `FOOTNOTE-001` (footnotes kept). `SINGLE-001`/`SINGLE-002` now run with `PDF_TO_MD_NO_TAGS=1` so they keep testing the no-structure fallback, and `SINGLE-001` checks for the generated ToC only, not for a table rebuilt from the PDF's printed contents page.
 - Experimental hybrid text engine, command line only (`--text-engine hybrid`). It takes body text from pdf-inspector (correct word spacing, bold/italic, multi-column order, about 10× faster) and applies this app's cleanup: ToC tables, margin-label and running-header removal, list spacing, and sentence re-joining. It falls back to PyMuPDF with a warning when `pdf-inspector` is not installed.
 
-## [0.7.1] - 2026-03-18
+## [0.7.2a] - 2026-07-24
+
+### Changed
+
+- Release version baseline set to `v0.7.2a`.
+
+### Fixed
+
+- Prevented conversion crashes when section titles contain Unicode replacement characters that break progress logging on Windows consoles.
+
+## [0.7.2] - 2026-03-21
+
+### Changed
+
+- Release version baseline set to `v0.7.2`.
+- Single-file output no longer injects a generated top-level Table of Contents when the source PDF has no embedded TOC.
+- For single-file conversion without embedded PDF TOC, heading fallback now emits one document-level heading instead of noisy heuristic heading splits.
+- Margin-noise normalization improved for short PDFs so recurring running headers/footers are filtered more reliably.
+
+### Fixed
+
+- Columnar PDF extraction now preserves reading order for mixed text/table layouts by processing text and tables per column instead of interleaving by global `y` position.
+- Text near table boundaries is no longer dropped by broad table-range skipping; only significant line/table overlap is filtered.
+- Table rendering corruption from malformed row splitting was fixed so markdown tables remain valid and render correctly.
+- Paragraph stitching no longer merges across column resets, reducing out-of-order content in two-column documents.
+
+## [0.7.1] - 2026-03-20
 
 ### Added
 

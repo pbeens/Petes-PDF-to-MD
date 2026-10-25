@@ -6,6 +6,9 @@
   "main": "electron/main.cjs",
   "scripts": {
     "phase1": "node ./scripts/phase1.js",
+    "test:smoke": "node ./scripts/test-smoke.js",
+    "test:regression": "node ./scripts/test-regression.js",
+    "test": "npm run test:smoke && npm run test:regression",
     "gui": "electron ./electron/main.cjs",
     "gui:dev": "electron ./electron/main.cjs",
     "build:mac": "./scripts/build-mac.sh",
