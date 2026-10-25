@@ -1,0 +1,8 @@
+---
+title: "Changelog"
+description: "Every release and what changed in it."
+---
+
+This page is generated from [`CHANGELOG.md`](https://github.com/pbeens/Pete-s-PDF-to-MD/blob/main/CHANGELOG.md) in the repository. Download any release from the [Releases page](https://github.com/pbeens/Pete-s-PDF-to-MD/releases).
+
+{{< include _changelog.md >}}

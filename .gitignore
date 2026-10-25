@@ -28,3 +28,7 @@ session-metrics.md
 
 # Python virtual environment
 .venv/
+
+# Quarto website build output
+docs/_site/
+docs/.quarto/

@@ -1,0 +1,94 @@
+---
+title: "Using the app"
+description: "Every option in the window, and the files a conversion creates."
+---
+
+## The window at a glance
+
+The window has a toolbar across the top and three panes below it.
+
+**Toolbar**
+
+- **Select PDF**: choose the PDF to convert. You can also drag a PDF onto this button.
+- **Run Conversion**: start the conversion. It's greyed out until you pick a PDF. After a conversion it reads **Up to Date** until you change the PDF or an option.
+- **Open Output Folder**: show the converted files in Finder.
+- **Output Root** → **Change**: the folder where results are saved. The default is **Documents → Pete's PDF to MD Output**.
+- **Output**: how to split the result (see [Output modes](#output-modes)).
+- **Status**: what the app is doing right now, with a timer while a conversion runs.
+
+**Panes**
+
+- **Outline Preview** (left): the document's heading tree, one line per heading. Click **Collapse** to hide it and give the other panes more room.
+- **Sections** (middle): every heading as a clickable list, indented by level. Right-click a section for **Open in folder**, **Open in default program** and **Copy path**.
+- **Section Content** (right): the text of the selected section. Tick **Render Markdown** to see headings, lists and tables formatted; untick it to see the raw Markdown that an AI tool would receive.
+
+**Options**
+
+- **Hide Section Info**: hides the information lines at the top of each section in the preview (see below). It only changes the preview, not the files.
+- **Include section info in files**: adds three lines under each heading in the saved files: the heading level, the page range and where the heading came from. Leave it off if you plan to paste the files into an AI tool and want only the document's own text.
+- **Auto-run on PDF select**: starts the conversion as soon as you pick a PDF.
+
+The **Support** menu has **Report a Bug** (opens the project's issues page on GitHub), **Buy Me a Coffee**, and **About**.
+
+The window title shows the exact build you're running, for example **Pete's PDF to MD v0.8.0e**. The letter at the end goes up with every build, so when you report a problem, include the full version.
+
+## Output modes {#output-modes}
+
+All three modes contain the same text. They differ only in how it's divided into files.
+
+| Mode | What you get | Good for |
+|---|---|---|
+| **One file** | The whole document in `<PDF name>.md`; when the PDF has bookmarks or tags, a table of contents comes first | Searching the whole document, or AI tools that accept long files |
+| **By major heading** | One file per top-level heading, in `By Major Heading/` | Giving an AI tool one chapter or part at a time |
+| **Individual sections** | One file per heading, in `Sections/` | Picking out exactly the section you need |
+
+## The files a conversion creates
+
+Each PDF gets its own folder inside the output root, named after the PDF. For example, converting `Annual-Report.pdf` in **Individual sections** mode creates:
+
+```
+Pete's PDF to MD Output/
+└── Annual-Report/
+    ├── outline.md        ← the heading tree, with links to each file
+    ├── outline.json      ← the same outline for programs to read
+    ├── segments.json     ← which pages and file each section covers
+    └── Sections/
+        ├── 1.0.0.0-front-matter.md
+        ├── 2.0.0.0-overview.md
+        ├── 2.1.0.0-introduction.md
+        └── …
+```
+
+**Section file names** start with a number that shows the section's place in the outline. `2.1.0.0` is the first subsection of the second top-level heading, so sorting the files by name puts them in document order. The rest of the name is the heading text.
+
+**outline.md** looks like this. `L2` is the heading level, `p8` the page where it starts, and the numbers at the end show how much text the section holds:
+
+```markdown
+- L1 p8 [Overview](Sections/2.0.0.0-overview.md)
+  - L2 p8 [Introduction](Sections/2.1.0.0-introduction.md) (lines: 3, chars: 850)
+  - L2 p8 [Roles and Responsibilities](Sections/2.2.0.0-roles-and-responsibilities.md)
+    - L3 p8 [Board of Directors](Sections/2.2.1.0-board-of-directors.md) (lines: 6, chars: 1550)
+```
+
+**Section info lines**, when *Include section info in files* is on, appear under each heading:
+
+```markdown
+### Board of Directors
+
+- Level: 3
+- Pages: 8-9
+- Source: pdf-tags
+```
+
+`Source` says how the heading was found: `pdf-outline` (the PDF's bookmarks), `pdf-tags` (its accessibility tags) or `text-heuristic` (worked out from the text). [How it works](how-it-works.qmd) explains the difference.
+
+::: {.callout-note}
+## Converting the same PDF again
+A new conversion replaces the Markdown files from the previous one, in the same mode. Files from a different mode (for example an earlier *By major heading* run) are left alone, and so are any folders you created inside the PDF's folder.
+:::
+
+## Using the results with an AI tool
+
+- **Pasting**: open a section file, copy its text and paste it into the chat. Markdown keeps the headings and tables readable.
+- **Uploading**: most AI tools accept `.md` files as attachments. Upload `outline.md` first if you want the tool to see how the document is organised.
+- **Projects and knowledge bases**: for tools that let you add many files (for example ChatGPT Projects or Claude Projects), *Individual sections* gives the tool small, clearly named pieces to search.

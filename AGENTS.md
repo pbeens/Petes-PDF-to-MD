@@ -35,7 +35,7 @@ This project is not a generic PDF renderer. Its main job is to convert structure
 - `scripts/extract_outline.py`: Python extraction and Markdown segmentation logic
 - `scripts/build-mac.sh`: macOS packaging helper
 - `scripts/release-prep.sh`: release-readiness checks and optional macOS build trigger
-- `docs/implementation-plan.md`: planning notes and implementation direction
+- `docs/`: Quarto website source (user guide). `quarto render docs` builds it into `docs/_site/` (ignored). `docs/_changelog.md` is regenerated from `CHANGELOG.md` by `docs/_copy-changelog.py` on every render; commit it with changelog changes. Not used by the app build (`buildResources` is `build/`).
 - `tests/pdfs/`: sample PDFs for local testing (not committed)
 - `.agents/skills/`: project-local skills
 
@@ -230,7 +230,7 @@ When changing packaging or release flows, verify the relevant script directly in
 
 - Keep `README.md` focused on end users: install, run, build, troubleshoot, release artifact locations.
 - Keep `AGENTS.md` focused on contributor and agent context: architecture, workflows, conventions, and guardrails.
-- If behavior changes, update the code and the relevant docs in the same turn when feasible.
+- If behavior changes, update the code and the relevant docs in the same turn when feasible. User-facing changes also belong on the website pages in `docs/` (for example `using-the-app.qmd`, `troubleshooting.qmd`).
 - Use exact script names, paths, and output folder names. Avoid vague documentation.
 
 ## Tutorial Writing Guidance

@@ -10,7 +10,7 @@ Sources: entries from 2026-10-24 were logged live. Entries from 2026-02-26 14:58
 - **Prompt:** Build 0.8.0e as a release build and update all documents. Then repurpose the `docs` folder (which held one miscellaneous planning note) for a Quarto website and build it.
 - **Host:** m4-mini
 - **Agent:** Claude Code
-- **Context:** Release DMG `Pete-s-PDF-to-MD-v0.8.0e-macOS.dmg`; release notes, README and changelog updated. Website follows in `docs/`.
+- **Context:** Release DMG `Pete-s-PDF-to-MD-v0.8.0e-macOS.dmg`; release notes, README and changelog updated. Quarto site in `docs/` (8 pages; changelog copied from `CHANGELOG.md` at render). Follow-ups: drop teacher/education framing from the site; restructure Getting started to lead with the Releases download, since it read like build-from-source instructions; asked whether installers need anything else (yes: Python + PyMuPDF).
 
 ## 2026-10-25 06:00
 

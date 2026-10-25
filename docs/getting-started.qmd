@@ -1,0 +1,87 @@
+---
+title: "Getting started"
+description: "Download the app, do a one-time setup, and convert your first PDF."
+---
+
+You don't need to build or compile anything. Download the app, do a one-time setup, and you're ready. It takes about ten minutes.
+
+::: {.callout-note}
+## What you need
+- A Mac with Apple Silicon (an M1, M2, M3 or later chip). To check, open the Apple menu → **About This Mac** and look at **Chip**.
+- A PDF that contains real text. A quick test: open the PDF and try to select a sentence with the mouse. If you can, it contains text. If the page behaves like one big picture, it's a scan, and the app can't read it (see [Troubleshooting](troubleshooting.qmd#scanned-pdfs)).
+:::
+
+## Step 1: Download and install the app
+
+1. Go to the [**Releases page**](https://github.com/pbeens/Pete-s-PDF-to-MD/releases). The newest release is at the top.
+2. Under **Assets**, click the file ending in **`-macOS.dmg`** to download it. A DMG is a disk image, the usual way Mac apps are delivered.
+3. Open the downloaded DMG and drag **Pete's PDF to MD** into your **Applications** folder.
+
+[Go to the Releases page](https://github.com/pbeens/Pete-s-PDF-to-MD/releases){.btn .btn-primary role="button"}
+
+::: {.callout-important}
+## "Apple could not verify…" the first time you open it
+The app isn't registered with Apple, so macOS blocks it the first time. To allow it:
+
+1. Click **Done** (or **OK**) in the warning.
+2. Open **System Settings → Privacy & Security** and scroll down.
+3. Next to the message about Pete's PDF to MD, click **Open Anyway**, and confirm.
+
+You only need to do this once.
+:::
+
+## Step 2: One-time setup (Python)
+
+The app does its conversion with **Python**, a free programming language. Python isn't built into the app yet, so you install it once, along with a PDF-reading add-on. You never have to use Python yourself; the app runs it in the background.
+
+**Install Python**
+
+1. Go to [python.org/downloads](https://www.python.org/downloads/) and click the yellow **Download Python** button.
+2. Open the downloaded file and follow the installer.
+
+**Install the PDF add-ons**
+
+1. Open **Terminal**, the Mac app for typing commands: press ⌘ Space, type *Terminal*, and press Return.
+2. Copy this line, paste it into the Terminal window, and press Return:
+
+   ```bash
+   python3 -m pip install --upgrade pymupdf pdf-inspector
+   ```
+
+3. Wait until you see a line starting with `Successfully installed`, then close Terminal.
+
+This installs two add-ons (Python calls them *packages*): **PyMuPDF**, which reads the text and tables in a PDF, and **pdf-inspector**, which reads the structure labels many PDFs contain and gives you a better outline.
+
+::: {.callout-tip collapse="true"}
+## Seeing "externally-managed-environment" or another error?
+That message means the command reached a Python that was installed with Homebrew, which refuses add-ons from pip. Install Python from python.org as above and run the command again. [Troubleshooting](troubleshooting.qmd#pymupdf-is-not-installed) has more help.
+:::
+
+## Step 3: Convert your first PDF
+
+1. Open **Pete's PDF to MD** from your Applications folder.
+2. Click **Select PDF** and choose a file, or drag a PDF onto the button.
+3. Next to **Output**, choose how you want the result split (you can change this later):
+   - **One file**: the whole document in a single Markdown file.
+   - **By major heading**: one file per top-level part or chapter.
+   - **Individual sections**: one file per heading. This is the default.
+4. Click **Run Conversion**. A 100-page document usually takes a few seconds.
+5. When it finishes, the **Sections** list fills in. Click a section to read it, and tick **Render Markdown** to see it formatted instead of as plain text.
+6. Click **Open Output Folder** to see the files in Finder.
+
+By default the files go into **Documents → Pete's PDF to MD Output**, in a folder named after your PDF. Click **Change** next to *Output Root* to pick another place.
+
+::: {.callout-note}
+## If a warning appears
+When something limits the conversion, a dialog tells you when it finishes. The most common one says your PyMuPDF is too old to find tables; running the command from step 2 again fixes it.
+:::
+
+## Updating to a new version
+
+Download the new DMG from the Releases page and drag the app into Applications again, replacing the old one. You don't need to repeat step 2.
+
+## Next steps
+
+- [Using the app](using-the-app.qmd) explains every option and the files the app creates.
+- [How it works](how-it-works.qmd) explains how the outline is built and what to expect from different kinds of PDFs.
+- Want to change the code or build the app yourself? See [Development](development.qmd).

@@ -16,7 +16,9 @@
     "build:mac:debug": "./scripts/build-mac.sh --debug",
     "version:show": "node ./scripts/bump-revision.js --print",
     "build:win": "electron-builder --win nsis",
-    "release:prep": "./scripts/release-prep.sh"
+    "release:prep": "./scripts/release-prep.sh",
+    "docs:preview": "quarto preview docs",
+    "docs:render": "quarto render docs"
   },
   "keywords": [],
   "author": "",
@@ -30,7 +32,7 @@
     "appId": "com.pbeens.petespdftomd",
     "productName": "Pete's PDF to MD",
     "directories": {
-      "buildResources": "docs"
+      "buildResources": "build"
     },
     "files": [
       "app/**",

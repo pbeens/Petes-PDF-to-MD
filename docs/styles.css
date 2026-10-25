@@ -1,0 +1,33 @@
+/* Small additions on top of the Cosmo/Darkly themes. */
+
+.hero {
+  padding: 1.5rem 0 0.5rem;
+}
+
+.hero .lead {
+  font-size: 1.25rem;
+  max-width: 42rem;
+}
+
+.screenshot img {
+  border-radius: 8px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.18);
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.feature-grid > div {
+  border: 1px solid var(--bs-border-color, #dee2e6);
+  border-radius: 8px;
+  padding: 1rem 1.1rem;
+}
+
+.feature-grid h3 {
+  font-size: 1.05rem;
+  margin-top: 0;
+}

@@ -1,0 +1,60 @@
+---
+title: "How it works"
+description: "How the app finds headings, rebuilds tables and cleans up text, and what to expect from different PDFs."
+---
+
+You don't need this page to use the app. It helps when you want to understand why one PDF converts better than another.
+
+## Why PDFs are hard to convert
+
+A PDF is a set of instructions for drawing a page: put these letters at these positions, in this font and size. Most PDFs don't record that a line is a heading, which lines form one paragraph, or which pieces of text belong to the same table cell. The app has to work that out from clues on the page, such as size, boldness, position and spacing, plus any extra information the PDF's author included.
+
+## Finding the headings
+
+The outline is the most important part of a conversion, because it decides how the document is split into sections. The app uses the best source available, in this order:
+
+1. **Bookmarks.** Many PDFs include a clickable table of contents in the viewer's sidebar, called *bookmarks* or the *document outline*. When it exists, the app uses it.
+2. **Accessibility tags.** A *tagged* PDF labels each part of the document for screen readers: this is a level-2 heading, this is a paragraph, this is a list. When a PDF has no bookmarks, or its bookmarks are all on one level, the app uses the heading tags instead, which keeps the document's real levels. This needs the optional **pdf-inspector** library (see [Getting started](getting-started.qmd#step-2-one-time-setup-python)).
+3. **The text itself.** With neither, the app looks for lines that are larger or bolder than the body text and treats them as headings. This works well for most documents, but it is a best guess.
+
+The `Source` line in each section (when *Include section info in files* is on) tells you which method was used.
+
+### Coded headings tagged as paragraphs
+
+Some tagged PDFs style lettered or numbered headings such as *A. Getting Started* or *B2. Safety Requirements* like headings but tag them as ordinary paragraphs, so the tags alone would miss them. When such a line is bold and clearly larger than the body text, the app adds it to the outline anyway: single letters one level down, letter-and-number codes one level below that, with any description that follows kept as normal text underneath.
+
+## Rebuilding tables
+
+When PyMuPDF 1.23 or newer is installed, the app looks for tables on each page by their ruling lines and cell layout. It then:
+
+- rebuilds each cell's text from the words inside it, so words keep their spaces (some PDFs store text without space characters);
+- gives each word to exactly one cell, so text isn't repeated when cells overlap;
+- removes empty columns and merges columns that a merged cell split in two;
+- recognises rubric-style charts with four achievement levels and labels their columns *Level 1* to *Level 4*.
+
+Tables that are really pictures (an image of a chart) can't be rebuilt.
+
+## Cleaning up the text
+
+On every page the app:
+
+- removes **running headers and footers**, the lines repeated at the top or bottom of each page, and **page numbers**, including ones printed beside the header;
+- joins **sentences split by a page break**;
+- keeps **footnotes** as separate paragraphs and moves them to the end of their section, so they don't interrupt the text;
+- reads **two-column pages** column by column;
+- turns bullet characters into Markdown list items.
+
+## What works well, and what doesn't
+
+| Works well | Works less well |
+|---|---|
+| Text-based PDFs made from Word, InDesign or a web page | Scanned PDFs (pictures of pages): no text to read |
+| Tagged PDFs, such as most government documents | Pages laid out like posters or slides, with text boxes scattered around |
+| PDFs with bookmarks | Tables drawn as images |
+| Single- and two-column layouts | Complex nested tables |
+
+For scanned PDFs, run them through a text-recognition (OCR) tool first. macOS Preview and Adobe Acrobat can both do this.
+
+## Privacy
+
+The conversion runs entirely on your computer. Nothing is uploaded, and the app doesn't contact the internet except when you click a link in the Support menu.

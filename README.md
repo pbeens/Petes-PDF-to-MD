@@ -104,11 +104,14 @@ Future considerations:
 - package Python and its libraries inside the app so nothing needs to be installed (a Rust/Tauri rewrite is being evaluated)
 - add a search function in the app to quickly find sections/content within converted output
 
-## Planning
+## Website
 
-Implementation options and milestone plan:
+A user guide (getting started, using the app, how it works, troubleshooting, changelog) is built with [Quarto](https://quarto.org) from the `.qmd` files in `docs/`. The original February 2026 plan is on its *Project history* page.
 
-- `docs/implementation-plan.md`
+- Preview: `npm run docs:preview` (or `quarto preview docs`)
+- Build into `docs/_site/`: `npm run docs:render` (or `quarto render docs`)
+
+The Changelog page is copied from `CHANGELOG.md` on every render.
 
 ## Phase 1 (Cross-Platform)
 

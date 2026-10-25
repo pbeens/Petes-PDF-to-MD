@@ -35,6 +35,7 @@ All notable changes to this project are documented in this file.
 
 ### Added
 
+- Project website (Quarto) in `docs/`: getting started, using the app, how it works, troubleshooting, changelog, development and project history. Build with `npm run docs:render`. The old `docs/implementation-plan.md` is now the *Project history* page, and electron-builder's resources folder moved from `docs/` to `build/`.
 - Warning when the installed PyMuPDF is older than 1.23 and has no table detection. Previously, tables were silently written as plain text.
 - Debug builds (`npm run build:mac:debug`): "(debug version)" in the title bar, and output written to a per-version folder (`<PDF name>/v0.8.0b/`) so earlier builds' results are kept. `npm run gui:debug` does the same from source; `--out-subdir` on the CLI.
 - Regression tests `CODE-001`, `CODE-002`, `HEAD-001`, `PAGENUM-001` and `DEBUG-001`. A test whose PDF is missing on this machine is now skipped instead of failed.

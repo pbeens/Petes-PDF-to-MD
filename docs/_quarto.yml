@@ -1,0 +1,50 @@
+project:
+  type: website
+  output-dir: _site
+  pre-render: _copy-changelog.py
+
+website:
+  title: "Pete's PDF to MD"
+  description: "Convert PDF documents into clean, well-structured Markdown for AI tools."
+  site-url: "https://pbeens.github.io/Pete-s-PDF-to-MD/"
+  repo-url: "https://github.com/pbeens/Pete-s-PDF-to-MD"
+  repo-actions: [issue]
+  page-navigation: true
+  navbar:
+    left:
+      - href: index.qmd
+        text: Home
+      - href: getting-started.qmd
+        text: Getting started
+      - href: using-the-app.qmd
+        text: Using the app
+      - href: how-it-works.qmd
+        text: How it works
+      - href: troubleshooting.qmd
+        text: Troubleshooting
+      - href: changelog.qmd
+        text: Changelog
+    right:
+      - text: More
+        menu:
+          - href: development.qmd
+            text: Development
+          - href: history.qmd
+            text: Project history
+      - icon: github
+        href: "https://github.com/pbeens/Pete-s-PDF-to-MD"
+        aria-label: GitHub repository
+  page-footer:
+    left: "© Peter Beens · Licensed under GPL-3.0"
+    right: "[Download](https://github.com/pbeens/Pete-s-PDF-to-MD/releases) · [Report a bug](https://github.com/pbeens/Pete-s-PDF-to-MD/issues)"
+
+format:
+  html:
+    theme:
+      light: cosmo
+      dark: darkly
+    css: styles.css
+    toc: true
+    toc-depth: 3
+    code-copy: true
+    link-external-newwindow: true

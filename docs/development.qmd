@@ -1,0 +1,78 @@
+---
+title: "Development"
+description: "Run the app from source, test changes, and make builds and releases."
+---
+
+This page is for people who want to change the app or build it themselves. The repository's [`AGENTS.md`](https://github.com/pbeens/Pete-s-PDF-to-MD/blob/main/AGENTS.md) has the full contributor guide.
+
+## How the app is put together
+
+| Part | What it is | Files |
+|---|---|---|
+| Desktop window | An **Electron** app: a web page (HTML and JavaScript) packaged as a desktop program | `electron/`, `app/` |
+| Launcher | A small **Node.js** script that finds Python and starts the converter | `scripts/phase1.js` |
+| Converter | A **Python** program that reads the PDF with PyMuPDF (and optionally pdf-inspector) and writes the Markdown | `scripts/extract_outline.py` |
+
+The window and the command line run the same launcher and converter, so a conversion gives the same result either way.
+
+## Running from source
+
+You need **Node.js 20 or newer** (a JavaScript runtime; it includes `npm`, its package installer), **Python 3.10 or newer**, and **git**.
+
+```bash
+git clone https://github.com/pbeens/Pete-s-PDF-to-MD.git
+cd Pete-s-PDF-to-MD
+npm install                      # Electron and the build tools
+python3 -m venv .venv            # a private Python just for this project
+source .venv/bin/activate
+python -m pip install --upgrade pymupdf pdf-inspector
+npm run gui                      # open the app
+```
+
+A **virtual environment** (`.venv`) is a separate copy of Python for this project, so its libraries don't mix with anything else on your computer. The launcher uses `.venv` automatically when it exists. On Windows, use `py -m venv .venv` and `.\.venv\Scripts\Activate.ps1`.
+
+To convert from the command line:
+
+```bash
+npm run phase1 -- --input "path/to/document.pdf" --conversion-mode single
+```
+
+Options include `--out-dir`, `--conversion-mode single|major|sections`, `--include-section-metadata 0|1`, and the experimental `--text-engine hybrid`, which takes body text from pdf-inspector.
+
+## Tests
+
+```bash
+npm test     # smoke tests, then the regression suite
+```
+
+The tests convert real PDFs and check the results, for example that footnotes aren't deleted, coded headings are found, and tables keep their words. The test PDFs live in `tests/pdfs/`, which is not committed to git; a test whose PDF is missing is skipped. The list of tests and the rules for adding one are in [`tests/TEST_PLAN.md`](https://github.com/pbeens/Pete-s-PDF-to-MD/blob/main/tests/TEST_PLAN.md).
+
+## Builds and version letters
+
+```bash
+npm run build:mac          # release build:  dist/Pete-s-PDF-to-MD-v0.8.0e-macOS.dmg
+npm run build:mac:debug    # debug build:    dist/Pete-s-PDF-to-MD-v0.8.0f-debug-macOS.dmg
+```
+
+Every build moves to the next **revision letter** (`0.8.0a`, `0.8.0b`, …), stored as `buildRevision` in `package.json`, so no two installers share a name. The letter restarts at `a` when the version changes. `npm run version:show` prints the current one.
+
+A **debug build** shows *(debug version)* in the window title and saves each conversion in a folder named after the build, for example `Annual-Report/v0.8.0f/`. Results from earlier builds stay in their own folders, which makes before-and-after comparisons easy. `npm run gui:debug` does the same when running from source.
+
+## Releases
+
+```bash
+npm run release:prep -- --version 0.8.0 --build
+```
+
+This checks that `package.json`, `CHANGELOG.md` and `README.md` all name the version, then makes a release build. Upload the DMG to a new release on the [Releases page](https://github.com/pbeens/Pete-s-PDF-to-MD/releases), tagged `v0.8.0`.
+
+## This website
+
+The site is built with [Quarto](https://quarto.org) from the `.qmd` files in `docs/`.
+
+```bash
+quarto preview docs     # live preview in your browser
+quarto render docs      # build the site into docs/_site/
+```
+
+The Changelog page is copied from `CHANGELOG.md` when the site is rendered, so it never needs editing by hand.

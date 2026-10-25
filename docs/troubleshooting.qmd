@@ -1,0 +1,69 @@
+---
+title: "Troubleshooting"
+description: "Fixes for common problems and error messages."
+---
+
+Before anything else, check the version in the window title (for example **v0.8.0e**) against the newest one on the [Releases page](https://github.com/pbeens/Pete-s-PDF-to-MD/releases). Many problems are already fixed in a later build.
+
+## The app won't open: "Apple could not verify…"
+
+The app isn't registered with Apple, so macOS blocks it the first time. Open **System Settings → Privacy & Security**, scroll down, and click **Open Anyway** next to the message about Pete's PDF to MD. See [Getting started, step 1](getting-started.qmd#step-1-download-and-install-the-app).
+
+## "PyMuPDF is not installed" {#pymupdf-is-not-installed}
+
+The app couldn't find a Python that has the PyMuPDF library. Either Python isn't installed, or the library was installed for a different Python than the one the app finds.
+
+1. Install Python from [python.org](https://www.python.org/downloads/) if you haven't.
+2. In Terminal, run:
+
+   ```bash
+   python3 -m pip install --upgrade pymupdf pdf-inspector
+   ```
+
+The app looks for Python in this order: the `PDF_TO_MD_PYTHON` setting (below), `python3`, then `/opt/homebrew/bin/python3` and `/usr/local/bin/python3`. The python.org installer puts Python in `/usr/local/bin`.
+
+To make the app use one particular Python, start it from Terminal with that Python's path:
+
+```bash
+PDF_TO_MD_PYTHON=/usr/local/bin/python3 open "/Applications/Pete's PDF to MD.app"
+```
+
+### "externally-managed-environment" when installing
+
+This Python was installed with Homebrew and refuses changes from pip. The simplest fix is to install Python from python.org and run the install command again; the app will find it in `/usr/local/bin`.
+
+## "PyMuPDF … has no table detection"
+
+The Python the app found has a PyMuPDF older than 1.23, which can't find tables, so tables come out as plain lines of text. The message names the version. Update it:
+
+```bash
+python3 -m pip install --upgrade pymupdf
+```
+
+If the warning stays, the update went to a different Python. Use the full path from the [PyMuPDF section](#pymupdf-is-not-installed), for example `/usr/local/bin/python3 -m pip install --upgrade pymupdf`.
+
+## The outline is flat or has odd headings
+
+- Check whether **pdf-inspector** is installed (`python3 -m pip install pdf-inspector`). Without it, tagged PDFs fall back to working headings out from the text.
+- If the PDF has bookmarks, the app trusts them. A PDF whose bookmarks are incomplete gives an incomplete outline.
+- Turn on *Include section info in files* and check the `Source` line to see which method was used. [How it works](how-it-works.qmd#finding-the-headings) explains the three methods.
+
+## Scanned PDFs {#scanned-pdfs}
+
+If a section is empty or reads *(No extractable text in this range.)*, the pages are probably images with no text layer. Run the PDF through a text-recognition (OCR) tool first, for example **Adobe Acrobat → Scan & OCR**, then convert the result.
+
+## "Conversion failed … invalid/corrupt PDF"
+
+The file may be damaged, incomplete, or not really a PDF. Open it in Preview or Acrobat, save or export it as a new PDF, and convert that copy.
+
+## "Conversion failed … Output files are locked by another program"
+
+A file from the previous conversion is open in another program, so it can't be replaced. Close any open section files, previews or editors, and run the conversion again.
+
+## "Could not open output folder … Output directory not found"
+
+The output folder doesn't exist yet. Click **Change** next to *Output Root*, choose a folder, and run the conversion once.
+
+## Still stuck?
+
+Use **Support → Report a Bug** in the app, or [open an issue on GitHub](https://github.com/pbeens/Pete-s-PDF-to-MD/issues). Include the full version from the window title, what you did, and the exact message. If you can share the PDF, attach it or say where it can be downloaded.
