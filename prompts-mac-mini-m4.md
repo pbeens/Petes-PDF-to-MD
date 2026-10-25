@@ -4,6 +4,14 @@ Prompt log from the Mac mini M4 (`m4-mini`). Another computer may have its own l
 
 Sources: entries from 2026-10-24 were logged live. Entries from 2026-02-26 14:58 to 2026-04-02 were reconstructed on 2026-10-24 from local Codex session transcripts (`~/.codex/sessions`). Entries up to 2026-02-26 14:54 come from the last committed `prompts.md` (git `afc792e`), deleted in `4057ab6`; their times are converted from UTC, and the first 18 share one bulk-logged time.
 
+## 2026-10-25 06:10
+
+- **Goal:** Build the v0.8.0e release and start a project website.
+- **Prompt:** Build 0.8.0e as a release build and update all documents. Then repurpose the `docs` folder (which held one miscellaneous planning note) for a Quarto website and build it.
+- **Host:** m4-mini
+- **Agent:** Claude Code
+- **Context:** Release DMG `Pete-s-PDF-to-MD-v0.8.0e-macOS.dmg`; release notes, README and changelog updated. Website follows in `docs/`.
+
 ## 2026-10-25 06:00
 
 - **Goal:** Restore curriculum strand and expectation headings.

@@ -101,6 +101,7 @@ Current priority:
 
 Future considerations:
 
+- package Python and its libraries inside the app so nothing needs to be installed (a Rust/Tauri rewrite is being evaluated)
 - add a search function in the app to quickly find sections/content within converted output
 
 ## Planning
@@ -180,6 +181,8 @@ Current GUI features:
 - right-click section action: `Open in default program`
 - right-click section action: `Copy path`
 - open output folder
+- warnings dialog after a conversion (for example, PyMuPDF too old for table detection)
+- exact build shown in the window title (`v0.8.0e`); debug builds add "(debug version)"
 
 Notes:
 
