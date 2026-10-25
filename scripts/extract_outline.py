@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import difflib
+import inspect
 import json
 import math
 import os
@@ -1142,32 +1143,73 @@ def table_rows_from_words(table, words) -> list[list[str]]:
     so many PDFs come out glued ("Knowledgeofcontent"). Page words carry
     MuPDF's gap-based spacing, so joining the words inside each cell box
     keeps normal spacing and reading order.
+
+    Detected cells can overlap (a merged cell spanning several split ones),
+    so each word goes to the smallest cell containing its centre only.
     """
+    boxes = {}
+    for r, row in enumerate(table.rows):
+        for c, cell in enumerate(row.cells):
+            if cell is not None:
+                boxes[(r, c)] = tuple(float(v) for v in cell)
+    assigned = {key: [] for key in boxes}
+    for w in words:
+        cx, cy = (w[0] + w[2]) / 2, (w[1] + w[3]) / 2
+        best = None
+        for key, (x0, y0, x1, y1) in boxes.items():
+            if x0 <= cx <= x1 and y0 <= cy <= y1:
+                area = (x1 - x0) * (y1 - y0)
+                if best is None or area < best[0]:
+                    best = (area, key)
+        if best is not None:
+            assigned[best[1]].append(w)
+
     rows = []
-    for row in table.rows:
+    for r, row in enumerate(table.rows):
         cells = []
-        for cell in row.cells:
+        for c, cell in enumerate(row.cells):
             if cell is None:
                 cells.append(None)
                 continue
-            x0, y0, x1, y1 = cell
-            inside = [
-                w for w in words
-                if x0 <= (w[0] + w[2]) / 2 <= x1 and y0 <= (w[1] + w[3]) / 2 <= y1
-            ]
-            inside.sort(key=lambda w: (w[5], w[6], w[7]))
+            inside = sorted(assigned[(r, c)], key=lambda w: (w[5], w[6], w[7]))
             cells.append(" ".join(w[4] for w in inside))
         rows.append(cells)
     return rows
 
 
+def find_tables_kwargs() -> dict:
+    """
+    Extra find_tables() arguments for the installed PyMuPDF.
+
+    PyMuPDF 2.0 runs an AI layout model on every page when the optional
+    pymupdf-layout package is installed (about 40x slower here), and its
+    results then depend on whether that package happens to be present.
+    Turn it off where the option exists; older versions do not accept it.
+    """
+    # Page.find_tables is a **kwargs wrapper; the real parameters live in fitz.table.
+    target = getattr(getattr(fitz, "table", None), "find_tables", None) or getattr(fitz.Page, "find_tables", None)
+    try:
+        params = inspect.signature(target).parameters
+    except (TypeError, ValueError):
+        return {}
+    return {"use_layout": False} if "use_layout" in params else {}
+
+
+FIND_TABLES_KWARGS = find_tables_kwargs()
+_PAGE_TABLE_CACHE: dict = {}
+
+
 def extract_page_tables(page, top: float, bottom: float) -> list[dict]:
     found = []
-    try:
-        table_objs = page.find_tables().tables
-    except Exception:
-        table_objs = []
-    words = page.get_text("words") if table_objs else []
+    # Pages holding several headings are read once per section; detect tables once per page.
+    cache_key = (id(page.parent), page.number)
+    if cache_key not in _PAGE_TABLE_CACHE:
+        try:
+            table_objs = page.find_tables(**FIND_TABLES_KWARGS).tables
+        except Exception:
+            table_objs = []
+        _PAGE_TABLE_CACHE[cache_key] = (table_objs, page.get_text("words") if table_objs else [])
+    table_objs, words = _PAGE_TABLE_CACHE[cache_key]
 
     seen = set()
     for table in table_objs:

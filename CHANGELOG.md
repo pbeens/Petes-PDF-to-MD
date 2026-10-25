@@ -18,6 +18,8 @@ All notable changes to this project are documented in this file.
 - `One file` and `By major heading` output no longer shows `(No extractable text in this range.)` under headings that are immediately followed by the next heading.
 - Document text is no longer deleted by the v0.7.2 page-header cleanup. It removed every paragraph that began with a number and a capital letter, which included all numbered footnotes (`2 The word parent(s) is used …`), and any short paragraph that began with the section title. On `AI-in-Education.pdf` v0.7.2a lost about 66,000 characters (258 distinct words); now only short, header-like lines and exact title echoes are removed.
 - `AGENTS.md` had leftover merge-conflict markers.
+- Conversion is much faster with PyMuPDF 2.0: `AI-in-Education.pdf` (242 pages) drops from about 42 s to 7 s. When the optional `pymupdf-layout` package is installed, PyMuPDF 2.0's table finder runs an AI layout model on every page; the app now turns that off, so results also no longer depend on whether that package is present. Tables are also detected once per page instead of once per section.
+- Table cells no longer repeat text when detected cells overlap (a merged cell over split ones); each word now goes to one cell only.
 
 ### Changed
 
