@@ -31,6 +31,7 @@ All notable changes to this project are documented in this file.
 ### Added
 
 - Warning when the installed PyMuPDF is older than 1.23 and has no table detection. Previously, tables were silently written as plain text.
+- Build revision letters: each macOS build is named `0.8.0a`, `0.8.0b`, … in the DMG filename, window title and build stamp, so you can tell which build you are running.
 - Conversion warnings now appear in a dialog when the conversion finishes. Before, they flashed by in the status line and were replaced within a second.
 - Tagged-PDF headings: when a PDF has no bookmarks but is tagged for accessibility, the outline comes from its H1–H6 tags (requires the optional `pdf-inspector` package). On `ICD2O_Curriculum.pdf` this gives exactly the document's 101 headings at their real levels. Tags are also preferred over bookmarks when the bookmarks are flat and the tags have more levels (e.g. `AI-in-Education.pdf`: 172 single-level bookmarks become a three-level Part/chapter/section outline). Superscript footnote numbers are stripped from tagged heading titles.
 - Regression tests: `TAGS-001` (tagged headings) and `FOOTNOTE-001` (footnotes kept). `SINGLE-001`/`SINGLE-002` now run with `PDF_TO_MD_NO_TAGS=1` so they keep testing the no-structure fallback, and `SINGLE-001` checks for the generated ToC only, not for a table rebuilt from the PDF's printed contents page.

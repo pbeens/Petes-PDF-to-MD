@@ -12,6 +12,7 @@
     "gui": "electron ./electron/main.cjs",
     "gui:dev": "electron ./electron/main.cjs",
     "build:mac": "./scripts/build-mac.sh",
+    "version:show": "node ./scripts/bump-revision.js --print",
     "build:win": "electron-builder --win nsis",
     "release:prep": "./scripts/release-prep.sh"
   },
@@ -47,5 +48,7 @@
     "dmg": {
       "artifactName": "Pete-s-PDF-to-MD-v${version}-macOS.${ext}"
     }
-  }
+  },
+  "buildRevision": "a",
+  "buildRevisionOf": "0.8.0"
 }

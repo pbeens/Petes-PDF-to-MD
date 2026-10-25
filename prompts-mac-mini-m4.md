@@ -4,6 +4,14 @@ Prompt log from the Mac mini M4 (`m4-mini`). Another computer may have its own l
 
 Sources: entries from 2026-10-24 were logged live. Entries from 2026-02-26 14:58 to 2026-04-02 were reconstructed on 2026-10-24 from local Codex session transcripts (`~/.codex/sessions`). Entries up to 2026-02-26 14:54 come from the last committed `prompts.md` (git `afc792e`), deleted in `4057ab6`; their times are converted from UTC, and the first 18 share one bulk-logged time.
 
+## 2026-10-25 05:15
+
+- **Goal:** Make each build identifiable.
+- **Prompt:** Append letters (a, b, c, …) to minor rebuilds so the running version is clear, in both the DMG filename and the program's header.
+- **Host:** m4-mini
+- **Agent:** Claude Code
+- **Context:** `buildRevision` in `package.json`, advanced by `scripts/bump-revision.js` on every `build-mac.sh` run; shown in the window title and build stamp. First lettered build: v0.8.0a.
+
 ## 2026-10-25 05:00
 
 - **Goal:** Fix slow conversions in v0.8.0.

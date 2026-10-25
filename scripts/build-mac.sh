@@ -21,6 +21,10 @@ if [[ ! -d "node_modules" ]]; then
   exit 1
 fi
 
-printf '%s\n' 'Building macOS DMG...'
-npx electron-builder --mac dmg "$@"
-printf '%s\n' 'Build complete. Artifacts are in dist/.'
+# Every build gets the next revision letter (0.8.0a, 0.8.0b, ...) so installers never share a name.
+display_version="$(node scripts/bump-revision.js)"
+printf 'Building macOS DMG for v%s...\n' "${display_version}"
+npx electron-builder --mac dmg \
+  -c.dmg.artifactName="Pete-s-PDF-to-MD-v${display_version}-macOS.\${ext}" \
+  "$@"
+printf 'Build complete: dist/Pete-s-PDF-to-MD-v%s-macOS.dmg\n' "${display_version}"

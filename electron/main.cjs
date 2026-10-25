@@ -13,8 +13,19 @@ const ALLOWED_EXTERNAL_URLS = new Set([
   'https://buymeacoffee.com/pbeens',
 ]);
 
+// Version plus build revision letter (0.8.0a); package.json is bundled with the app.
+function getDisplayVersion() {
+  let revision = '';
+  try {
+    revision = String(require('../package.json').buildRevision || '');
+  } catch (_err) {
+    // no-op
+  }
+  return `${app.getVersion()}${revision}`;
+}
+
 function buildWindowTitle() {
-  return `Pete's PDF to MD v${app.getVersion()}`;
+  return `Pete's PDF to MD v${getDisplayVersion()}`;
 }
 
 function createWindow() {
@@ -361,7 +372,7 @@ ipcMain.handle('get-default-output-root', async () => {
 
 ipcMain.handle('get-app-meta', async () => {
   return {
-    version: app.getVersion(),
+    version: getDisplayVersion(),
     startedAt: APP_STARTED_AT.toISOString(),
     isPackaged: app.isPackaged,
     title: buildWindowTitle(),

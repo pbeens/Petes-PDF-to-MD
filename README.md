@@ -62,7 +62,9 @@ Then install the packages above (`python -m pip install --upgrade pymupdf pdf-in
    `npm run release:prep -- --version 0.8.0 --build`
 
 
-- `dist/Pete-s-PDF-to-MD-v0.8.0-macOS.dmg`
+- `dist/Pete-s-PDF-to-MD-v0.8.0<letter>-macOS.dmg`
+
+Each macOS build gets the next revision letter (`0.8.0a`, `0.8.0b`, …) so you can tell builds apart. The same version appears in the app's window title and build stamp. The letter is stored in `package.json` (`buildRevision`) and restarts at `a` when the version changes. Show the current one with `npm run version:show`.
 
 ### Windows (PowerShell)
 
@@ -222,7 +224,7 @@ Notes:
 ### "I only see a .app file after build"
 
 - `dist/mac-arm64/*.app` is an intermediate output.
-- Upload `dist/Pete-s-PDF-to-MD-v0.8.0-macOS.dmg` to GitHub Releases.
+- Upload the newest `dist/Pete-s-PDF-to-MD-v0.8.0<letter>-macOS.dmg` to GitHub Releases.
 
 ## License
 

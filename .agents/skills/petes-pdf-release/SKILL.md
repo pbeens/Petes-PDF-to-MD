@@ -18,7 +18,7 @@ Run this workflow for repository release prep:
 - `npm run release:prep -- --version <version>`
 6. Build DMG when requested:
 - `npm run release:prep -- --version <version> --build`
-7. Verify artifact exists in `dist/` and report exact filename.
+7. Verify artifact exists in `dist/` and report exact filename. Each build advances the revision letter in `package.json` (`buildRevision`), so the file is `Pete-s-PDF-to-MD-v<version><letter>-macOS.dmg` (for example `v0.8.0b`). Commit the `package.json` change with the build.
 8. In the final response, provide:
 - release tag suggestion (`v<version>`)
 - upload path (`dist/<artifact>.dmg`)
