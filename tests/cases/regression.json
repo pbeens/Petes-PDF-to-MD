@@ -87,6 +87,38 @@
     "notes": "Skipped when pdf-inspector or the fixture is missing."
   },
   {
+    "id": "CODE-001",
+    "name": "Curriculum strands and overall expectations tagged as paragraphs become headings",
+    "fromVersion": "0.8.0",
+    "priority": "regression",
+    "automation": "automated",
+    "fixture": "tests/pdfs/Science SNC1W.pdf",
+    "check": "outline_titles",
+    "needsTags": true,
+    "expectTitles": [
+      "A. STEM Skills, Careers, and Connections",
+      "A1. STEM Investigation Skills",
+      "E2. Investigating and Understanding Concepts"
+    ],
+    "notes": "The PDF tags these as P, not H1-H6. Skipped when pdf-inspector is missing."
+  },
+  {
+    "id": "CODE-002",
+    "name": "An expectation title is not run into its description text",
+    "fromVersion": "0.8.0",
+    "priority": "regression",
+    "automation": "automated",
+    "fixture": "tests/pdfs/Science SNC1W.pdf",
+    "check": "text_rules",
+    "mode": "single",
+    "rejectPatterns": [
+      "^A1\\. STEM Investigation Skills [a-z]"
+    ],
+    "expectText": [
+      "A1. STEM Investigation Skills"
+    ]
+  },
+  {
     "id": "PAGENUM-001",
     "name": "Page numbers next to the running header are removed and footnotes stay out of body text",
     "fromVersion": "0.8.0",

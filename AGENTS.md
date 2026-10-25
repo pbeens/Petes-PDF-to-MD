@@ -50,7 +50,7 @@ Both flows ultimately run the same conversion pipeline:
 
 1. `scripts/phase1.js` validates arguments, finds a usable Python interpreter, and checks that PyMuPDF is installed. It tries `PDF_TO_MD_PYTHON`, `PYTHON_BIN`, the project's `.venv`, then `python3`/`python` and common Homebrew paths. The packaged app does not bundle Python.
 2. `scripts/phase1.js` invokes `scripts/extract_outline.py`.
-3. `scripts/extract_outline.py` reads the PDF, extracts or infers headings, normalizes the outline, and writes Markdown outputs plus metadata files. Heading sources, in order: PDF bookmarks; accessibility tags when there are no bookmarks or the bookmarks are flat (needs `pdf-inspector`; `PDF_TO_MD_NO_TAGS=1` turns this off); text heuristics.
+3. `scripts/extract_outline.py` reads the PDF, extracts or infers headings, normalizes the outline, and writes Markdown outputs plus metadata files. Heading sources, in order: PDF bookmarks; accessibility tags when there are no bookmarks or the bookmarks are flat (needs `pdf-inspector`; `PDF_TO_MD_NO_TAGS=1` turns this off), plus curriculum-code lines (`A.`, `A1.`) that are tagged as paragraphs but set in large bold type; text heuristics.
 4. The Electron app reads those output files back from disk and displays the outline and section content.
 
 ## Core Application Files

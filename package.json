@@ -51,6 +51,6 @@
       "artifactName": "Pete-s-PDF-to-MD-v${version}-macOS.${ext}"
     }
   },
-  "buildRevision": "c",
+  "buildRevision": "d",
   "buildRevisionOf": "0.8.0"
 }

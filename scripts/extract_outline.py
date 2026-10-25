@@ -114,11 +114,8 @@ def build_outline_from_tags(pdf_path: Path) -> list[dict]:
         return []
     try:
         elements = pdf_inspector.extract_structure_elements(str(pdf_path))
-        roles = {
-            (e.page, e.mcid): e.role
-            for e in elements
-            if re.fullmatch(r"H[1-6]?", e.role or "")
-        }
+        all_roles = {(e.page, e.mcid): e.role for e in elements}
+        roles = {key: role for key, role in all_roles.items() if re.fullmatch(r"H[1-6]?", role or "")}
         if not roles:
             return []
         items = pdf_inspector.extract_text_with_positions(str(pdf_path))
@@ -184,7 +181,70 @@ def build_outline_from_tags(pdf_path: Path) -> list[dict]:
                 }
             )
         prev_key = key
-    return entries
+        entries[-1].setdefault("_key", key)
+
+    return add_untagged_code_headings(entries, items, all_roles)
+
+
+# Ontario curriculum strands and overall expectations: "A. Programming", "B3. Cybersecurity and Data".
+CURRICULUM_CODE_RE = re.compile(r"^([A-Z])(\d{1,2})?\.\s+[A-Z]")
+
+
+def add_untagged_code_headings(entries: list[dict], items, all_roles: dict) -> list[dict]:
+    """
+    Add strand/expectation headings that the PDF tags as plain paragraphs.
+
+    Ministry curriculum PDFs set "A. Computational Thinking ..." (strand) and
+    "A1. Computational Thinking, Planning, and Purpose" (overall expectation) in
+    large bold type but tag them P, so the H1-H6 outline misses them. A bold
+    paragraph run that starts with such a code and is clearly larger than body
+    text becomes a heading: strands one level below the tagged heading they sit
+    under, expectations one level below their strand.
+    """
+    sizes = sorted(i.font_size for i in items if i.item_type == "text" and i.font_size)
+    if not sizes:
+        return entries
+    body_size = sizes[len(sizes) // 2]
+
+    runs = {}
+    for item in items:
+        key = (item.page, item.mcid)
+        if item.mcid is not None and item.item_type == "text" and all_roles.get(key) == "P":
+            runs.setdefault(key, []).append(item)
+
+    added = []
+    for key, run in runs.items():
+        first = run[0]
+        title = clean_line("".join(i.text for i in run))
+        match = CURRICULUM_CODE_RE.match(title)
+        if not match or not first.is_bold or first.font_size < 1.3 * body_size or len(title) > 120:
+            continue
+        added.append({
+            "title": title,
+            "page_start": key[0],
+            "source": "pdf-tags",
+            "y0": None,
+            "_key": key,
+            "_code_depth": 2 if match.group(2) else 1,
+        })
+    if not added:
+        return [{k: v for k, v in e.items() if k != "_key"} for e in entries]
+
+    merged = sorted(entries + added, key=lambda e: e["_key"])
+    base_level = 1
+    strand_level = None
+    for entry in merged:
+        depth = entry.pop("_code_depth", None)
+        entry.pop("_key", None)
+        if depth is None:
+            base_level = int(entry["level"])
+            strand_level = None
+        elif depth == 1:
+            strand_level = min(6, base_level + 1)
+            entry["level"] = strand_level
+        else:
+            entry["level"] = min(6, (strand_level or base_level) + 1)
+    return merged
 
 
 def normalize_match_text(value: str) -> str:
@@ -1315,7 +1375,11 @@ def lines_to_paragraphs(lines: list[dict]) -> list[str]:
             and 0 < line.get("size", 0.0) <= 0.8 * body_size
             and re.match(r"^\d{1,3}\s+\S", text) is not None
         )
-        starts_new = y_reset or footnote_start or (gap > 4.0 and not continuation_of_bullet) or bullet or (
+        # A sharp change in type size separates a heading from the text under it
+        # ("A1. Computational Thinking, Planning, and Purpose" at 16 pt, then 11 pt body).
+        size_a, size_b = prev.get("size", 0.0), line.get("size", 0.0)
+        size_break = size_a > 0 and size_b > 0 and max(size_a, size_b) >= 1.25 * min(size_a, size_b)
+        starts_new = y_reset or footnote_start or size_break or (gap > 4.0 and not continuation_of_bullet) or bullet or (
             indent_delta - prev_indent_delta > 8.0 and not continuation_of_bullet
         )
 
