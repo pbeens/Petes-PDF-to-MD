@@ -62,9 +62,9 @@ const HIDE_SECTION_META_PREVIEW_KEY = 'pdf_to_md_hide_section_meta_preview';
 const INCLUDE_SECTION_META_FILES_KEY = 'pdf_to_md_include_section_meta_files';
 const AUTO_RUN_ON_SELECT_KEY = 'pdf_to_md_auto_run_on_select';
 const OUTPUT_MODE_KEY = 'pdf_to_md_output_mode';
-const ISSUES_URL = 'https://github.com/pbeens/Pete-s-PDF-to-MD/issues';
+const ISSUES_URL = 'https://github.com/pbeens/Petes-PDF-to-MD/issues';
 const BUY_COFFEE_URL = 'https://buymeacoffee.com/pbeens';
-const REPO_URL = 'https://github.com/pbeens/Pete-s-PDF-to-MD';
+const REPO_URL = 'https://github.com/pbeens/Petes-PDF-to-MD';
 
 function setStatus(text) {
   statusTextEl.textContent = text;
@@ -113,13 +113,15 @@ function middleEllipsizePath(fullPath, element) {
   const { sep, parts } = splitPathParts(value);
   if (parts.length <= 1) return value;
 
+  // Keep the leading separator and the last folder or file name; drop folders
+  // from the start until it fits. If even ".../name" is too wide, CSS clips it.
+  const lead = value.startsWith(sep) ? sep : '';
   const endSegment = parts[parts.length - 1];
-  const startParts = parts.length >= 2 ? parts.slice(0, 2) : parts.slice(0, 1);
-  const startSegment = startParts.join(sep);
-  const minimal = `${startSegment}${sep}...${sep}${endSegment}`;
-
-  // Preserve file/folder name in full; if width is still too small, allow CSS clipping.
-  return minimal;
+  const candidates = [2, 1]
+    .filter((count) => parts.length > count + 1)
+    .map((count) => `${lead}${parts.slice(0, count).join(sep)}${sep}...${sep}${endSegment}`);
+  candidates.push(`...${sep}${endSegment}`);
+  return candidates.find((candidate) => measureTextWidth(candidate, element) <= availableWidth) || candidates[candidates.length - 1];
 }
 
 function renderPathDisplays() {
@@ -182,7 +184,8 @@ function updateRunButtonState() {
   const canRun = !busy && Boolean(state.inputPdfPath) && Boolean(state.conversionDirty);
   runBtn.disabled = !canRun;
   runBtn.classList.toggle('up-to-date', !busy && Boolean(state.inputPdfPath) && !state.conversionDirty);
-  runBtn.textContent = state.conversionDirty ? 'Run Conversion' : 'Up to Date';
+  // "Up to Date" only once a selected PDF has been converted with the current options.
+  runBtn.textContent = state.inputPdfPath && !state.conversionDirty ? 'Up to Date' : 'Run Conversion';
 }
 
 function markConversionDirty(reasonStatus) {
@@ -801,19 +804,32 @@ if (inputDropZoneEl) {
       return;
     }
 
-    const dropPayload = getDropPayload(event);
-    const validation = await window.pdfToMdApi.resolveDroppedInputPdf(dropPayload);
-    if (!validation?.ok || !validation?.filePath) {
-      setStatus('Error');
-      alert(toUserErrorMessage(validation?.message || 'Dropped file path is invalid.'));
-      return;
-    }
-
-    setInputPdfPath(validation.filePath, { forceDirty: true });
-    setStatus('PDF selected');
-    triggerAutoRunIfEnabled();
+    await handleDropPayload(getDropPayload(event));
   });
 }
+
+async function handleDropPayload(dropPayload) {
+  const validation = await window.pdfToMdApi.resolveDroppedInputPdf(dropPayload);
+  if (!validation?.ok || !validation?.filePath) {
+    setStatus('Error');
+    alert(toUserErrorMessage(validation?.message || 'Dropped file path is invalid.'));
+    return;
+  }
+
+  setInputPdfPath(validation.filePath, { forceDirty: true });
+  setStatus('PDF selected');
+  triggerAutoRunIfEnabled();
+}
+
+// The Tauri app reports dropped files through its native drop event, with paths
+// (see tauri-bridge.js); route them through the same handling.
+window.pdfToMdHandleDroppedPaths = async (paths) => {
+  if (state.activeConversionRunId) {
+    setStatus('Conversion in progress. Wait for completion before changing input.');
+    return;
+  }
+  await handleDropPayload({ files: (paths || []).map((p) => ({ name: '', path: String(p) })), types: [], textByType: {} });
+};
 
 window.addEventListener('dragover', (event) => {
   event.preventDefault();

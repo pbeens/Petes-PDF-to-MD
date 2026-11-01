@@ -31,3 +31,38 @@
   font-size: 1.05rem;
   margin-top: 0;
 }
+
+.release-badge {
+  display: inline-block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.7rem;
+  margin-bottom: 0.75rem;
+  border-radius: 999px;
+  color: var(--bs-primary, #2780e3);
+  border: 1px solid currentColor;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 1rem;
+  margin: 1.25rem 0 1.5rem;
+}
+
+.stat-grid > div {
+  border: 1px solid var(--bs-border-color, #dee2e6);
+  border-radius: 8px;
+  padding: 1rem 1.1rem;
+}
+
+.stat-grid .stat {
+  display: block;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--bs-primary, #2780e3);
+  margin-bottom: 0.25rem;
+}

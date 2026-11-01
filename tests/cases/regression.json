@@ -57,7 +57,7 @@
     "automation": "automated",
     "fixture": "tests/pdfs/Science SNC1W.pdf",
     "check": "single_tagged_headings",
-    "notes": "Skipped when pdf-inspector is not installed."
+    "notes": "Skipped when the fixture is missing."
   },
   {
     "id": "FOOTNOTE-001",
@@ -100,7 +100,7 @@
       "A1. STEM Investigation Skills",
       "E2. Investigating and Understanding Concepts"
     ],
-    "notes": "The PDF tags these as P, not H1-H6. Skipped when pdf-inspector is missing."
+    "notes": "The PDF tags these as P, not H1-H6."
   },
   {
     "id": "CODE-002",
@@ -146,6 +146,75 @@
     "automation": "automated",
     "fixture": "tests/pdfs/Science SNC1W.pdf",
     "check": "version_subdir"
+  },
+  {
+    "id": "READ-001",
+    "name": "Two-column pages are read left column first, even where pdf-inspector reads them out of order",
+    "fromVersion": "0.9.0",
+    "priority": "regression",
+    "automation": "automated",
+    "fixture": "tests/pdfs/GCPSE_Efficiency.pdf",
+    "check": "text_rules",
+    "mode": "single",
+    "expectText": [
+      "(e.g. France, Malaysia). In many cases"
+    ],
+    "notes": "Skipped when the fixture is missing."
+  },
+  {
+    "id": "READ-002",
+    "name": "Two columns read across into a fake table are split back into their columns",
+    "fromVersion": "0.9.0",
+    "priority": "regression",
+    "automation": "automated",
+    "fixture": "tests/pdfs/GCPSE_Efficiency.pdf",
+    "check": "text_rules",
+    "mode": "single",
+    "expectText": [
+      "Executive summary (TBC) 4",
+      "Education sector (TBC) 10"
+    ],
+    "rejectPatterns": [
+      "^\\|#08-01"
+    ],
+    "notes": "Skipped when the fixture is missing."
+  },
+  {
+    "id": "QUOTE-001",
+    "name": "Pull-quotes woven into body text are taken out and kept as one blockquote",
+    "fromVersion": "0.9.0",
+    "priority": "regression",
+    "automation": "automated",
+    "fixture": "tests/pdfs/GCPSE_Efficiency.pdf",
+    "check": "text_rules",
+    "mode": "single",
+    "expectText": [
+      "Koop, Osiewalski, & Steel, 1997",
+      "> Market-based payment and incentive structures can destroy value"
+    ],
+    "rejectPatterns": [
+      "Wilson, efficiency as they"
+    ],
+    "notes": "Skipped when the fixture is missing."
+  },
+  {
+    "id": "LAYER-001",
+    "name": "Pages that are pictures with a hidden text layer (exported slides) are converted from that layer",
+    "fromVersion": "0.9.0",
+    "priority": "regression",
+    "automation": "automated",
+    "fixture": "tests/pdfs/Getting Started with Agentic AI - Peter Beens.pdf",
+    "check": "text_rules",
+    "mode": "single",
+    "expectText": [
+      "# The AI becomes a working assistant within the project, not a separate chatbot.",
+      "It can read, create, modify and organize the files in your project folder"
+    ],
+    "rejectPatterns": [
+      "Getting Started with Agentic AI \\d\\d$",
+      "^# Front Matter"
+    ],
+    "notes": "Skipped when the fixture is missing."
   },
   {
     "id": "NOISE-001",
@@ -237,30 +306,6 @@
     "priority": "regression",
     "automation": "pending",
     "notes": "Needs dedicated corrupt fixture and message assertions."
-  },
-  {
-    "id": "PY-001",
-    "name": "Python/PyMuPDF detection honors override env vars",
-    "fromVersion": "0.5.0",
-    "priority": "regression",
-    "automation": "pending",
-    "notes": "Needs controlled multi-interpreter test environment."
-  },
-  {
-    "id": "PKG-001",
-    "name": "Packaged app script path resolution avoids spawn ENOTDIR",
-    "fromVersion": "0.5.0",
-    "priority": "release",
-    "automation": "manual",
-    "notes": "Packaged-app integration check."
-  },
-  {
-    "id": "PKG-002",
-    "name": "Windows packaged conversion launches without console window",
-    "fromVersion": "0.6.0",
-    "priority": "release",
-    "automation": "manual",
-    "notes": "Requires packaged Windows app runtime."
   },
   {
     "id": "GUI-001",

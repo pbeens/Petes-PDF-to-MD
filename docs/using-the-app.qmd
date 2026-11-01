@@ -9,7 +9,7 @@ The window has a toolbar across the top and three panes below it.
 
 **Toolbar**
 
-- **Select PDF**: choose the PDF to convert. You can also drag a PDF onto this button.
+- **Select PDF**: choose the PDF to convert. You can also drag a PDF from Finder and drop it anywhere on the window; the button lights up while you drag.
 - **Run Conversion**: start the conversion. It's greyed out until you pick a PDF. After a conversion it reads **Up to Date** until you change the PDF or an option.
 - **Open Output Folder**: show the converted files in Finder.
 - **Output Root** → **Change**: the folder where results are saved. The default is **Documents → Pete's PDF to MD Output**.
@@ -28,9 +28,9 @@ The window has a toolbar across the top and three panes below it.
 - **Include section info in files**: adds three lines under each heading in the saved files: the heading level, the page range and where the heading came from. Leave it off if you plan to paste the files into an AI tool and want only the document's own text.
 - **Auto-run on PDF select**: starts the conversion as soon as you pick a PDF.
 
-The **Support** menu has **Report a Bug** (opens the project's issues page on GitHub), **Buy Me a Coffee**, and **About**.
+At the top right, **About** shows who made the app and links to its source code, and the **Support** menu has **Report a Bug** (opens the project's issues page on GitHub) and **Buy Me a Coffee**.
 
-The window title shows the exact build you're running, for example **Pete's PDF to MD v0.8.0e**. The letter at the end goes up with every build, so when you report a problem, include the full version.
+The window title shows the version you're running, for example **Pete's PDF to MD v1.0**. When you report a problem, include it. (Test builds add a letter and *(debug version)*, for example **v1.0b (debug version)**.)
 
 ## Output modes {#output-modes}
 
@@ -59,7 +59,7 @@ Pete's PDF to MD Output/
         └── …
 ```
 
-**Section file names** start with a number that shows the section's place in the outline. `2.1.0.0` is the first subsection of the second top-level heading, so sorting the files by name puts them in document order. The rest of the name is the heading text.
+**Section file names** start with a number that shows the section's place in the outline. `2.1.0.0` is the first subsection of the second top-level heading, so Finder lists the files in document order (it sorts numbers by value, so `2.10` comes after `2.9`). The rest of the name is the heading text.
 
 **outline.md** looks like this. `L2` is the heading level, `p8` the page where it starts, and the numbers at the end show how much text the section holds:
 

@@ -1,240 +1,110 @@
 ﻿# Pete's PDF to MD
 
-Download the latest app from GitHub Releases: [https://github.com/pbeens/Pete-s-PDF-to-MD/releases](https://github.com/pbeens/Pete-s-PDF-to-MD/releases)
+Turn PDF documents into clean Markdown that AI tools can read well, split by the document's own headings.
 
-Open-source utility to convert PDF documents to high-quality Markdown for AI workflows.
+**Download:** [GitHub Releases](https://github.com/pbeens/Petes-PDF-to-MD/releases) · **User guide:** [peter.beens.ca/Petes-PDF-to-MD](https://peter.beens.ca/Petes-PDF-to-MD/)
 
 <p align="center">
-  <a href="images/petes-pdf-to-md-v0.7.0.png" target="_blank" rel="noopener noreferrer">
-    <img src="images/petes-pdf-to-md-v0.7.0.png" alt="Pete's PDF to MD GUI screenshot" width="75%">
+  <a href="docs/images/app-screenshot.png" target="_blank" rel="noopener noreferrer">
+    <img src="docs/images/app-screenshot.png" alt="Pete's PDF to MD: outline, sections and converted text" width="75%">
   </a>
 </p>
 
 ## Current Version
 
-`v0.8.0`
+`v1.0`, a complete rebuild in Rust. See [`CHANGELOG.md`](CHANGELOG.md).
 
-## Releases
+- **Nothing to install.** One app, about 6 MB to download. No Python, no add-ons, no Terminal.
+- **Fast.** A 242-page book converts in about 2 seconds.
+- **Finds the real headings** from the PDF's bookmarks or accessibility tags, or works them out from the text.
+- **Three ways to split the result:** **One file**, **By major heading**, or **Individual sections** (one file per heading).
+- **Your choice of output folder.** Files go to `Documents/Pete's PDF to MD Output` unless you pick another folder.
+- **Clean text:** tables rebuilt, running headers and page numbers removed, footnotes collected at the end of each section, sentences split by page breaks rejoined, two-column pages read in order, bold, italics and links kept.
+- **Private.** Everything runs on your computer.
 
-- GitHub Releases: `https://github.com/pbeens/Pete-s-PDF-to-MD/releases`
-- Changelog: `CHANGELOG.md`
+### What makes it different
 
-## Requirements
+Most PDF-to-Markdown converters produce one long file. This one splits the document along its **own headings**, so you can hand an AI tool exactly the chapter or section you need:
 
-The app does not include Python. It runs its converter with the Python already installed on your computer, so even the downloaded app needs:
+- **One file**, **By major heading** (one file per chapter or part), or **Individual sections** (one file per heading).
+- Section files are numbered by their place in the outline (`2.1.0.0-introduction.md`), so Finder lists them in reading order.
+- `outline.md` links to every file with its page and size; `outline.json` and `segments.json` give programs the same information.
+- Heading levels come from the PDF's bookmarks or accessibility tags when it has them, not just font sizes.
+- A desktop window to browse the outline and sections right away, and a command-line tool (`npm run convert`) for scripts and batches.
 
-- Python 3.10+ (or newer)
-- PyMuPDF Python package, version 1.23 or newer (older versions convert but skip tables; the app warns you when this happens)
-- Optional: `pdf-inspector` Python package. When installed, PDFs tagged for accessibility get their real multi-level headings (`python3 -m pip install pdf-inspector`)
+macOS on Apple Silicon. A Windows version is planned.
 
-Install or upgrade PyMuPDF:
+## Install
 
-- macOS/Linux: `python3 -m pip install --upgrade pymupdf`
-- Windows (PowerShell): `py -m pip install --upgrade pymupdf`
+1. Download `Pete-s-PDF-to-MD-v1.0-macOS.dmg` from [Releases](https://github.com/pbeens/Petes-PDF-to-MD/releases).
+2. Open it and drag **Pete's PDF to MD** into **Applications**.
+3. The first time, macOS says it can't verify the app. Open **System Settings → Privacy & Security** and click **Open Anyway**.
 
-Building from source also needs Node.js 20+ (includes `npm`).
+## Using the app
 
-### Running from source: use a virtual environment (recommended)
+- **Select PDF**, or drop a PDF anywhere on the window.
+- Choose **Output**: `One file`, `By major heading` or `Individual sections`.
+- **Run Conversion**, then browse the outline and sections, or **Open Output Folder**.
+- Right-click a section for `Open in folder`, `Open in default program` and `Copy path`.
+- **Output Root → Change** picks a different output folder.
 
-The downloaded app does not use a virtual environment; it looks for Python on the system (see above). When running from source, a local `.venv` keeps this project's packages separate. `npm run gui` and `npm run phase1` use the project's `.venv` automatically when it exists.
+For a PDF named `example.pdf`, the output goes to `<output root>/example/`:
 
-From the project root, create a local virtual environment named `.venv`:
+- `outline.json`, `outline.md`, `segments.json`: the outline, for people and for programs
+- `example.md` (**One file**), `By Major Heading/*.md`, or `Sections/*.md` (**Individual sections**)
 
-- macOS/Linux: `python3 -m venv .venv`
-- Windows (PowerShell): `py -m venv .venv`
+The [user guide](https://peter.beens.ca/Petes-PDF-to-MD/) explains every option.
 
-Activate it before installing Python packages:
+## Build from source
 
-- macOS/Linux: `source .venv/bin/activate`
-- Windows (PowerShell): `.\.venv\Scripts\Activate.ps1`
+Needs [Rust](https://rustup.rs) (`cargo`) and Node.js 20+ (for the Tauri command-line tool).
 
-Then install the packages above (`python -m pip install --upgrade pymupdf pdf-inspector`).
+```bash
+npm install
+npm run gui                 # run the app from source
+npm run build:mac           # dist/Pete-s-PDF-to-MD-v1.0-macOS.dmg
+npm run build:mac:debug     # dist/Pete-s-PDF-to-MD-v1.0b-debug-macOS.dmg
+npm test                    # build the converter, then the smoke and regression suites
+npm run test:rust           # Rust unit tests and app command tests
+```
 
-## Build From Source
+Command line, without the app:
 
-### macOS
+```bash
+npm run convert -- --input "path/to/file.pdf" --out-dir output --conversion-mode single
+```
 
-1. `npm install`
-2. `python3 -m pip install pymupdf`
-3. Run unpackaged app for development:
-   `npm run gui`
-4. Build release artifact (DMG):
-   `npm run release:prep -- --version 0.8.0 --build`
+Options: `--out-dir`, `--conversion-mode single|major|sections`, `--include-section-metadata 0|1`, `--out-subdir <folder>`.
 
+**Versions.** Users see `v1.0` (a zero patch number is dropped from `1.0.0`). Every build also advances a revision letter in `package.json` (`buildRevision`). Release builds don't show it. Debug builds do (`v1.0b`): they show "(debug version)" in the title bar and save each conversion in `<PDF name>/v1.0b/`, so results from earlier builds stay side by side. `npm run gui:debug` runs a debug build from source; `npm run version:show` prints the current version.
 
-- `dist/Pete-s-PDF-to-MD-v0.8.0<letter>-macOS.dmg`
+**Releases.** `npm run release:prep -- --version 1.0.0 --build` checks that `package.json`, the Rust crates, `CHANGELOG.md` and this README agree on the version, then builds the DMG. Upload it to [Releases](https://github.com/pbeens/Petes-PDF-to-MD/releases).
 
-Each macOS build gets the next revision letter (`0.8.0a`, `0.8.0b`, …) so you can tell builds apart. The same version appears in the app's window title and build stamp. The letter is stored in `package.json` (`buildRevision`) and restarts at `a` when the version changes. Show the current one with `npm run version:show`.
+## Repository layout
 
-Debug builds (`npm run build:mac:debug`, file `…v0.8.0b-debug-macOS.dmg`) show "(debug version)" in the title bar and write each conversion to a per-version folder, `<output folder>/<PDF name>/v0.8.0b/`, so results from earlier builds are kept for comparison. Normal runs only replace the `.md` files directly in `<PDF name>/`, never these folders. When running from source, `npm run gui:debug` does the same.
+| Path | What it is |
+|---|---|
+| `rust/converter/` | The converter: library and command-line tool ([`rust/README.md`](rust/README.md)) |
+| `rust/app/` | The desktop app (Tauri) |
+| `app/` | The app's window: HTML, CSS, JavaScript |
+| `scripts/` | Build, release and test scripts |
+| `tests/` | Test cases and plan; test PDFs go in `tests/pdfs/` (not committed) |
+| `docs/` | The user guide website ([Quarto](https://quarto.org): `npm run docs:preview`, `npm run docs:render`) |
+| `archive/electron-python/` | The Electron app and Python converter used up to v0.9, kept for reference |
 
-### Windows (PowerShell)
+## Extraction accuracy
 
-1. `npm install`
-2. `py -m pip install pymupdf`
-3. Run unpackaged app for development:
-   `npm run gui`
-4. Build release installer:
-   `npm run build:win`
-
-Release artifact:
-
-- `dist/*.exe`
-
-Upload release artifacts to:
-
-- `https://github.com/pbeens/Pete-s-PDF-to-MD/releases`
-
-Build notes:
-
-- `dist/mac-arm64/*.app` is an intermediate output for macOS packaging.
-- Upload the `.dmg` from `dist/` for macOS releases.
-
-## Project Status
-
-Active development (usable beta).
-
-Current priority:
-
-- extract a reliable heading outline from PDFs
-- use headings to split output into smaller sub-documents for LLM workflows
-
-Future considerations:
-
-- package Python and its libraries inside the app so nothing needs to be installed (a Rust/Tauri rewrite is being evaluated)
-- add a search function in the app to quickly find sections/content within converted output
-
-## Website
-
-A user guide (getting started, using the app, how it works, troubleshooting, changelog) is built with [Quarto](https://quarto.org) from the `.qmd` files in `docs/`. The original February 2026 plan is on its *Project history* page.
-
-- Preview: `npm run docs:preview` (or `quarto preview docs`)
-- Build into `docs/_site/`: `npm run docs:render` (or `quarto render docs`)
-
-The Changelog page is copied from `CHANGELOG.md` on every render.
-
-## Phase 1 (Cross-Platform)
-
-Current Phase 1 implements heading outline extraction and split planning using a cross-platform backend:
-
-- launcher: `scripts/phase1.js` (Node.js)
-- extractor: `scripts/extract_outline.py` (Python + PyMuPDF)
-
-Run:
-
-- `npm run phase1 -- --input "tests/pdfs/<file>.pdf"`
-
-Experimental, command line only: `--text-engine hybrid` takes body text from `pdf-inspector` (better word spacing, bold/italic, multi-column order) and applies this app's cleanup. It needs `pdf-inspector` installed and falls back to PyMuPDF with a warning otherwise.
-
-Outputs:
-
-- `output/<pdf-name>/outline.json`
-- `output/<pdf-name>/outline.md`
-- `output/<pdf-name>/segments.json`
-- `single` mode: `output/<pdf-name>/<pdf-name>.md` (root, no subfolder)
-- `sections` mode: `output/<pdf-name>/Sections/*.md` (one merged markdown file per heading)
-- `major` mode: `output/<pdf-name>/By Major Heading/*.md` (one merged markdown file per major heading)
-
-## Extraction Accuracy
-
-- PDF structure varies significantly across files; extracted headings, section boundaries, and text flow may not be 100% exact for every document.
-- Best results come from well-structured PDFs with a reliable embedded outline/table of contents.
-- Always review output before downstream publishing or automation.
-
-## GUI (Electron)
-
-Minimal desktop UI is scaffolded and wired to the existing conversion pipeline.
-
-Files:
-
-- `electron/main.cjs` (main process + IPC)
-- `electron/preload.cjs` (safe renderer bridge)
-- `app/index.html`, `app/styles.css`, `app/renderer.js` (UI)
-
-### macOS Run
-
-1. `npm install`
-2. `python3 -m pip install pymupdf`
-3. `npm run gui`
-
-For release packaging instructions, see **Build From Source** above.
-
-### Windows Run (PowerShell)
-
-1. Install Node.js (LTS) and Python 3.
-2. `npm install`
-3. `py -m pip install pymupdf`
-4. `npm run gui`
-
-Notes for Windows:
-
-- GUI launch (`npm run gui`) and conversion pipeline are cross-platform.
-
-Current GUI features:
-
-- select a PDF file
-- drag and drop a PDF onto the `Select PDF` button
-- select output root folder
-- choose conversion output mode: `One file`, `By major heading`, or `Individual sections`
-- run conversion (calls existing `scripts/phase1.js`)
-- preview `outline.md`
-- browse sections from `outline.json`
-- view section markdown content
-- right-click section action: `Open in folder`
-- right-click section action: `Open in default program`
-- right-click section action: `Copy path`
-- open output folder
-- warnings dialog after a conversion (for example, PyMuPDF too old for table detection)
-- exact build shown in the window title (`v0.8.0e`); debug builds add "(debug version)"
-
-Notes:
-
-- The app now quits when the last window is closed (so terminal returns immediately).
-- Build stamp uses local time format: `yyyy-mm-dd hh:mm`.
-- Section path display uses middle truncation to preserve start and filename.
+PDFs vary a lot. Headings, section boundaries and text flow may not be exact for every document. The best results come from PDFs with bookmarks or accessibility tags. Scanned PDFs without a text layer need text recognition (OCR) first. Review the output before relying on it.
 
 ## Troubleshooting
 
-### "Could not open output folder ... Output directory not found"
+- **"Apple could not verify…"**: see step 3 under [Install](#install).
+- **"Output files are locked by another program"**: close any open section files or previews, then convert again.
+- **"invalid/corrupt PDF"**: open the PDF in Preview, export it as a new PDF, and convert that.
+- **A section says "(No extractable text in this range.)"**: those pages are images. Run the PDF through OCR first.
 
-- The app now defaults to `~/Documents/Pete's PDF to MD Output`.
-- If the error appears, set Output Folder explicitly in the app, then run conversion once.
-
-### "Conversion failed ... spawn ENOTDIR"
-
-- This indicates an older packaged build.
-- Rebuild and reinstall using:
-  `npm run release:prep -- --version 0.8.0 --build`
-
-### "Conversion failed ... Output files are locked by another program"
-
-- Close any open files, previews, or editors under the output markdown folder for the selected mode.
-- Retry conversion after releasing file locks.
-
-### "Conversion failed ... invalid/corrupt PDF"
-
-- The file may be incomplete/corrupt or not a valid PDF despite extension.
-- Open in a PDF viewer and re-export/save as a new PDF, then retry.
-
-### "PyMuPDF is not installed"
-
-- Install PyMuPDF for the same Python interpreter used by the app:
-  `/opt/homebrew/bin/python3 -m pip install pymupdf`
-- If needed, launch the app from Terminal with:
-  `PDF_TO_MD_PYTHON=/opt/homebrew/bin/python3 open /Applications/Pete\\'s\\ PDF\\ to\\ MD.app`
-
-### "PyMuPDF ... has no table detection"
-
-- The Python interpreter the app found has PyMuPDF older than 1.23, so tables are written as plain text.
-- Upgrade PyMuPDF for that interpreter (the warning shows the version), for example:
-  `/usr/local/bin/python3 -m pip install --upgrade pymupdf`
-
-### "I only see a .app file after build"
-
-- `dist/mac-arm64/*.app` is an intermediate output.
-- Upload the newest `dist/Pete-s-PDF-to-MD-v0.8.0<letter>-macOS.dmg` to GitHub Releases.
+More in the [user guide](https://peter.beens.ca/Petes-PDF-to-MD/troubleshooting.html). Report bugs with **Support → Report a Bug** in the app, or on [GitHub Issues](https://github.com/pbeens/Petes-PDF-to-MD/issues), and include the version from the window title.
 
 ## License
 
-This project is licensed under GPL-3.0. See `LICENSE`.
-
+GPL-3.0. See [`LICENSE`](LICENSE).

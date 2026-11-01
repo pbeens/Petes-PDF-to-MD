@@ -4,9 +4,9 @@ Project-level operating instructions for Codex and other contributors working in
 
 ## Project Overview
 
-`Pete's PDF to MD` is an Electron desktop app plus a scriptable conversion pipeline that turns PDF documents into Markdown better suited for AI and LLM workflows.
+`Pete's PDF to MD` is a desktop app plus a command-line converter that turns PDF documents into Markdown better suited for AI and LLM workflows. Since 1.0 both are written in Rust: the converter is a Rust library and command-line tool, and the app is a Tauri window around it.
 
-The current codebase focuses on:
+The codebase focuses on:
 
 - extracting a reliable heading outline from a PDF
 - using that outline to split the PDF content into manageable Markdown files
@@ -17,59 +17,63 @@ This project is not a generic PDF renderer. Its main job is to convert structure
 
 ## Main Technologies
 
-- Node.js 20+ for the app shell, CLI launcher, and build scripts
-- Electron for the desktop GUI
-- Python 3.10+ for the PDF extraction engine
-- PyMuPDF (`pymupdf`; older versions import as `fitz`) for reading PDF structure and text
-- Optional: `pdf-inspector` (Rust engine with Python bindings) for tagged-PDF headings and the experimental `--text-engine hybrid`
-- `electron-builder` for packaged app builds
+- Rust (stable, via rustup) for the converter and the app
+- [pdf-inspector](https://github.com/firecrawl/pdf-inspector) (MIT) for text, structure tags and tables; `lopdf` for bookmarks and page sizes
+- Tauri 2 for the desktop app (uses the system web view; the window is plain HTML/CSS/JavaScript)
+- Node.js 20+ for the Tauri CLI (`@tauri-apps/cli`), the test runners and small build scripts
+- Quarto for the website in `docs/`
+
+No Python is used. The Electron app and Python/PyMuPDF converter used up to v0.9 are in `archive/electron-python/` for reference only; do not build on them.
 
 ## Repository Layout
 
-- `README.md`: end-user setup, build, and troubleshooting guide
+- `README.md`: end-user overview, install, build, troubleshooting
 - `CHANGELOG.md`: release history
-- `package.json`: npm scripts, app version, Electron Builder config
-- `app/`: renderer-side GUI files
-- `electron/`: Electron main process and preload bridge
-- `scripts/phase1.js`: Node launcher for the conversion pipeline
-- `scripts/extract_outline.py`: Python extraction and Markdown segmentation logic
-- `scripts/build-mac.sh`: macOS packaging helper
-- `scripts/release-prep.sh`: release-readiness checks and optional macOS build trigger
-- `docs/`: Quarto website source (user guide). `quarto render docs` builds it into `docs/_site/` (ignored). `docs/_changelog.md` is regenerated from `CHANGELOG.md` by `docs/_copy-changelog.py` on every render; commit it with changelog changes. Not used by the app build (`buildResources` is `build/`).
-- `tests/pdfs/`: sample PDFs for local testing (not committed)
+- `package.json`: npm scripts, app version and build revision letter
+- `rust/converter/`: the converter crate (`petes-pdf-to-md`; library `petes_pdf_core`, binary `petes-pdf-to-md`). See `rust/README.md`.
+- `rust/app/`: the Tauri app crate (`petes-pdf-to-md-app`), with `tauri.conf.json`, `capabilities/`, `icons/`
+- `app/`: the app window (`index.html`, `styles.css`, `renderer.js`, `tauri-bridge.js`)
+- `scripts/build-mac.sh`: macOS DMG build
+- `scripts/bump-revision.js`: revision letters and the display version
+- `scripts/release-prep.sh`: release-readiness checks and optional build
+- `scripts/test-smoke.js`, `scripts/test-regression.js`: test runners
+- `docs/`: Quarto website source (user guide). `quarto render docs` builds it into `docs/_site/` (ignored). `docs/_changelog.md` is regenerated from `CHANGELOG.md` by `docs/_copy-changelog.py` on every render; commit it with changelog changes.
+- `tests/`: test plan and cases; sample PDFs in `tests/pdfs/` (not committed)
+- `archive/electron-python/`: retired Electron app and Python converter (see its README)
 - `.agents/skills/`: project-local skills
 
 ## How The App Works
 
-There are two main entry points:
+There are two entry points, and both call the same library function, `petes_pdf_core::convert_with_progress`:
 
-- CLI flow: `npm run phase1 -- --input "path/to/file.pdf"`
-- GUI flow: `npm run gui`
+- CLI: `npm run convert -- --input "path/to/file.pdf"` (runs `rust/target/release/petes-pdf-to-md`)
+- GUI: `npm run gui` (Tauri dev mode) or the built app
 
-Both flows ultimately run the same conversion pipeline:
+Conversion steps (`rust/converter/src/lib.rs`):
 
-1. `scripts/phase1.js` validates arguments, finds a usable Python interpreter, and checks that PyMuPDF is installed. It tries `PDF_TO_MD_PYTHON`, `PYTHON_BIN`, the project's `.venv`, then `python3`/`python` and common Homebrew paths. The packaged app does not bundle Python.
-2. `scripts/phase1.js` invokes `scripts/extract_outline.py`.
-3. `scripts/extract_outline.py` reads the PDF, extracts or infers headings, normalizes the outline, and writes Markdown outputs plus metadata files. Heading sources, in order: PDF bookmarks; accessibility tags when there are no bookmarks or the bookmarks are flat (needs `pdf-inspector`; `PDF_TO_MD_NO_TAGS=1` turns this off), plus curriculum-code lines (`A.`, `A1.`) that are tagged as paragraphs but set in large bold type; text heuristics.
-4. The Electron app reads those output files back from disk and displays the outline and section content.
+1. Read the PDF with pdf-inspector (whole-document Markdown, positioned text, structure tags) and lopdf (bookmarks, page sizes). Pages that are images with an invisible text layer are read through region extraction.
+2. Build the outline. Heading sources, in order: PDF bookmarks; accessibility tags when there are no bookmarks or the bookmarks are flat (`PDF_TO_MD_NO_TAGS=1` turns this off), plus curriculum-code lines (`A.`, `A1.`) tagged as paragraphs but set in large bold type; text heuristics.
+3. Fix the reading order (`reading.rs`), remove page furniture, split the Markdown at each heading, clean each section and repair run-on tables (`body.rs`, `tables.rs`).
+4. Write the Markdown files and `outline.json`, `outline.md`, `segments.json` (`output.rs`).
+
+The app then reads those files back from disk to show the outline and section content.
 
 ## Core Application Files
 
-### Electron
+### App (Tauri)
 
-- `electron/main.cjs`: app bootstrap, window creation, IPC handlers, conversion subprocess spawning, output loading, shell integrations
-- `electron/preload.cjs`: safe API bridge exposed to the renderer
+- `rust/app/src/main.rs`: commands called by the window (pick/validate/drop a PDF, run a conversion, load the outline and sections, open files and folders), window title, file-drop forwarding, and mock-runtime tests
+- `rust/app/build.rs`: display version from `package.json`, debug-build flag
+- `app/tauri-bridge.js`: defines `window.pdfToMdApi` on top of the commands and events
+- `app/renderer.js`, `app/index.html`, `app/styles.css`: the window's UI and state
 
-### Renderer
+The command names and return shapes began as the Electron IPC handlers and `renderer.js` still uses that API (`window.pdfToMdApi`). Change a command, its bridge function and its use in `renderer.js` together.
 
-- `app/index.html`: desktop UI markup
-- `app/styles.css`: desktop UI styling
-- `app/renderer.js`: renderer state, event handling, outline browsing, section preview, output-mode selection
+### Converter
 
-### Conversion Pipeline
-
-- `scripts/phase1.js`: CLI wrapper and Python/PyMuPDF environment resolution
-- `scripts/extract_outline.py`: primary extraction engine and output writer
+- `rust/converter/src/lib.rs`: `convert` / `convert_with_progress`, the pipeline
+- `outline.rs`, `layout.rs`, `reading.rs`, `body.rs`, `tables.rs`, `output.rs`, `text.rs`: see the table in `rust/README.md`
+- `rust/converter/src/main.rs`: the command-line tool
 
 ## Output Model
 
@@ -89,42 +93,48 @@ Depending on conversion mode:
 - `sections`: one Markdown file per heading in `Sections/`
 - `major`: one Markdown file per major heading in `By Major Heading/`
 
-In the packaged GUI, the default output root is:
+In the app, the default output root is:
 
 - `~/Documents/Pete's PDF to MD Output`
 
-## Debug Builds and Revision Letters
+## Converter Notes
 
-- Every macOS build advances `buildRevision` in `package.json` (`0.8.0a`, `0.8.0b`, …) via `scripts/bump-revision.js`; commit that change with the build.
-- `npm run build:mac:debug` bakes `debugBuild: true` into the bundled `package.json`. Debug builds show "(debug version)" in the title bar and pass `--out-subdir v<version><letter>` so output lands in `<output>/<PDF name>/v0.8.0b/`. `PDF_TO_MD_DEBUG=1` (or `npm run gui:debug`) does the same from source.
+- `PDF_TO_MD_DEBUG_TABLES=1` prints the run-on table repair decisions to stderr; `PDF_TO_MD_DEBUG_READING=1` prints the reading-order decisions; `PDF_TO_MD_NO_REORDER=1` keeps pdf-inspector's own order (for comparisons); `PDF_TO_MD_NO_TAGS=1` ignores accessibility tags.
+- Every cleanup or reordering step must keep all words; the table and reading-order code check this and fall back when it fails. Losing document text is the worst kind of regression here.
+- The rules were ported from the Python converter; `archive/electron-python/scripts/extract_outline.py` can explain why a rule exists, but the Rust code is now the source of truth.
+
+## App Notes
+
+- File drops: `forward_file_drops` in `main.rs` sends `file-drag` events (`enter`, `leave`, `drop` with paths) to the window; a drop anywhere on the window selects the PDF. The drop position is not used, because macOS reports it in different units from the other platforms.
+- Conversion progress goes to the window as `conversion-progress` events.
+- `cargo test -p petes-pdf-to-md-app` calls the commands through Tauri's mock runtime the way the bridge does (same names and argument JSON), including a full conversion and a file drop.
+
+## Versions, Debug Builds and Revision Letters
+
+- `package.json`, `rust/*/Cargo.toml` and `rust/app/tauri.conf.json` hold the semver version (`1.0.0`); keep them equal. Users see the display version, which drops a zero patch number (`1.0`).
+- Every build advances `buildRevision` in `package.json` (`a`, `b`, …) via `scripts/bump-revision.js`; the letter restarts when the version changes. Release builds don't show it; debug builds do (`1.0b`). `rust/app/build.rs` applies the same rule.
+- `npm run build:mac:debug` makes a debug build: "(debug version)" in the title bar and output in `<output>/<PDF name>/v1.0b/`. `npm run gui:debug` does the same from source, and `PDF_TO_MD_DEBUG=1` turns on the per-version folders at run time.
 
 ## Development Workflows
 
 ### Install
 
-Required local dependencies:
-
-- Node.js 20+
-- Python 3.10+
-- PyMuPDF installed for the same Python interpreter the app will use
-
-Typical setup:
-
-- `npm install`
-- `python3 -m pip install pymupdf`
+- Rust via [rustup](https://rustup.rs), Node.js 20+
+- `npm install` (installs the Tauri CLI)
 
 ### Run The GUI
 
 - `npm run gui`
 
-### Run The CLI Pipeline
+### Run The CLI
 
-- `npm run phase1 -- --input "tests/pdfs/<file>.pdf"`
+- `npm run convert -- --input "tests/pdfs/<file>.pdf" --out-dir output --conversion-mode single`
 
 ### Build
 
-- macOS DMG: `npm run build:mac`
-- Windows installer: `npm run build:win`
+- macOS DMG: `npm run build:mac` → `dist/Pete-s-PDF-to-MD-v<display version>-macOS.dmg`
+- `dist/` (not committed) holds only the current release DMG and its `RELEASE-NOTES-v<version>.md`; earlier release DMGs move to `dist/archive/`. Debug builds are deleted once superseded.
+- Windows: not yet built or tested for the Tauri app.
 
 ### Release Prep
 
@@ -133,9 +143,9 @@ Typical setup:
 
 `scripts/release-prep.sh` checks:
 
-- `package.json` version matches the requested version
-- `CHANGELOG.md` has a matching release section
-- `README.md` references the release version
+- `package.json`, both `Cargo.toml` files and `tauri.conf.json` match the requested version
+- `CHANGELOG.md` has a matching release section (`## [1.0] - …` or `## [1.0.0] - …`)
+- `README.md` references the display version (`v1.0`)
 - `README.md` includes the GitHub Releases URL
 
 ## Local Skills Convention
@@ -160,7 +170,7 @@ Use this skill when the task is about release preparation, DMG packaging, or rel
 2. Keep scripts idempotent where possible.
 3. When adding a new workflow, expose it through `scripts/` first.
 4. Prefer extending the existing CLI or packaging scripts over embedding one-off behavior inside documentation.
-5. Preserve cross-platform behavior where practical. The current repo supports macOS and Windows, and the CLI pipeline is designed to be cross-platform.
+5. Preserve cross-platform behavior where practical. Releases are macOS-only for now, but the converter and the Tauri app are meant to build on Windows too; avoid macOS-only code outside clearly marked platform branches.
 
 ## Change/Test Gate
 
@@ -201,26 +211,25 @@ Latest regression report: `tests/reports/regression-latest.md`.
 
 ## Code Change Guidance
 
-- Keep the GUI and CLI pipeline aligned. If a conversion behavior changes, check whether both entry points still work consistently.
-- Do not break the packaged-app path logic. The app distinguishes between dev mode and packaged mode when resolving script locations.
-- Treat `scripts/extract_outline.py` as the source of truth for extraction behavior.
+- Keep the GUI and CLI aligned. Both call the same library; if you add an option, expose it in both.
 - Treat `outline.json`, `outline.md`, and segmented Markdown files as part of the public workflow; avoid changing their names or layout casually.
-- When changing output folder names or layout, review both the generator and the Electron code that reads outputs back in.
+- When changing output folder names or layout, review both the generator (`output.rs`) and the app code that reads outputs back in (`load_outline` / `load_section` in `rust/app/src/main.rs`).
 - Maintain helpful failure messages. The GUI already translates several technical failures into clearer user-facing errors.
 
 ## Testing Guidance
 
-Run `npm test` (smoke + regression suites; see "Change/Test Gate" above). The suites use `tests/pdfs/Science SNC1W.pdf`, which is not committed; copy it into `tests/pdfs/` first.
+Run `npm test` (builds the converter, then the smoke + regression suites; see "Change/Test Gate" above) and `npm run test:rust` (unit tests and app command tests). The suites use PDFs in `tests/pdfs/` (for example `Science SNC1W.pdf`), which are not committed; a regression case whose PDF is missing is skipped.
 
 When changing extraction or output behavior, also verify with:
 
-- `npm run phase1 -- --input "tests/pdfs/<file>.pdf"`
+- `npm run convert -- --input "tests/pdfs/<file>.pdf"`
 - inspection of generated `outline.json`, `outline.md`, and Markdown outputs
 - a check that no document text was lost compared with the previous version (cleanup rules that drop paragraphs are the usual cause)
 
 When changing GUI behavior, verify with:
 
 - `npm run gui`
+- `cargo test -p petes-pdf-to-md-app` when a command or the bridge changes
 - one conversion run through the desktop app
 - outline loading, section browsing, and output-folder actions when relevant
 

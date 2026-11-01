@@ -11,7 +11,8 @@ This file is the canonical list of automated tests for this repository.
 - Latest regression run results: `tests/reports/regression-latest.json` and `tests/reports/regression-latest.md`
 - Test fixtures (inputs): `tests/pdfs/`
 - Generated outputs from test executions: `tests/runs/` (and `tests/runs-single/` for ad-hoc single-mode runs)
-- Executable runners: `scripts/`
+- Executable runners: `scripts/` (they run the converter binary, `rust/target/release/petes-pdf-to-md`, which `npm test` builds first)
+- Rust unit tests and the app's command tests: `npm run test:rust` (`cargo test --release` in `rust/`)
 - Command entry points: `package.json` scripts
 
 ## Test Requirements
@@ -30,11 +31,11 @@ Every automated test must:
 
 ### Smoke (required on every code change)
 
-1. `CLI-01` Phase 1 runs successfully on a known PDF fixture.
+1. `CLI-01` A conversion runs successfully on a known PDF fixture.
 Pass criteria: command exits 0 and creates `outline.json`, `segments.json`, `outline.md`, and at least one `.md` output file.
 
-2. `CLI-02` Unsupported engine is rejected.
-Pass criteria: command exits non-zero and prints an `Unsupported engine` error.
+2. `CLI-02` An unknown conversion mode is rejected.
+Pass criteria: command exits non-zero and prints an `Unknown mode` error.
 
 3. `OUT-01` Single-mode output shape is valid.
 Pass criteria: with `--conversion-mode single`, exactly one document markdown file is generated plus outline/segments indexes.
@@ -48,8 +49,13 @@ Regression cases are defined in `tests/cases/regression.json` and include:
 
 1. Changelog-derived extraction and post-processing fixes (`EXTRACT-*`, `TABLE-*`, `PARA-*`, `POST-*`).
 2. Mode and fallback behavior checks (`SINGLE-*`, `MODE-*`, `FRONT-*`).
-3. Packaging and GUI regression checks (`PKG-*`, `GUI-*`, `OUT-*`).
-4. Heading-source and text-preservation checks (`TAGS-*`, `FOOTNOTE-*`). `TAGS-001` is skipped when `pdf-inspector` is not installed. `SINGLE-001`/`SINGLE-002` run with `PDF_TO_MD_NO_TAGS=1` so the tagged fixture still exercises the no-structure fallback.
+3. GUI regression checks (`GUI-*`, `OUT-*`), done by hand in the app.
+4. Heading-source and text-preservation checks (`TAGS-*`, `FOOTNOTE-*`, `CODE-*`, `HEAD-*`, `PAGENUM-*`). `SINGLE-001`/`SINGLE-002` run with `PDF_TO_MD_NO_TAGS=1` so the tagged fixture still exercises the no-structure fallback.
+5. Reading-order checks on a two-column document (`READ-*`, `QUOTE-*`, fixture `tests/pdfs/GCPSE_Efficiency.pdf`) and hidden text layers (`LAYER-001`).
+
+Any case whose PDF is not in `tests/pdfs/` is skipped.
+
+The Python-era cases for finding Python and for packaged script paths (`PY-001`, `PKG-001`, `PKG-002`) were removed in 1.0 with the Python converter and the Electron app.
 
 ### Quality/Guardrail (run in full suite)
 

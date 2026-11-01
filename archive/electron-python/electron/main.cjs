@@ -24,7 +24,10 @@ function readBundledPackage() {
 
 // Version plus build revision letter (0.8.0a).
 function getDisplayVersion() {
-  return `${app.getVersion()}${String(readBundledPackage().buildRevision || '')}`;
+  const pkg = readBundledPackage();
+  // A letter left over from an older version means no build of this version yet.
+  const letter = pkg.buildRevisionOf === app.getVersion() ? String(pkg.buildRevision || '') : '';
+  return `${app.getVersion()}${letter}`;
 }
 
 // Debug builds (npm run build:mac:debug) or PDF_TO_MD_DEBUG=1 write each version's

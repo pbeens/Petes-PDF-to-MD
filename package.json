@@ -1,58 +1,31 @@
 {
   "name": "petes-pdf-to-md",
-  "version": "0.8.0",
+  "version": "1.0.0",
   "description": "Open-source utility to convert PDF documents to high-quality Markdown for AI workflows.",
   "private": true,
-  "main": "electron/main.cjs",
   "scripts": {
-    "phase1": "node ./scripts/phase1.js",
+    "convert": "cargo run --release --quiet --manifest-path rust/Cargo.toml -p petes-pdf-to-md --",
+    "test:build": "cargo build --release --quiet --manifest-path rust/Cargo.toml -p petes-pdf-to-md",
     "test:smoke": "node ./scripts/test-smoke.js",
     "test:regression": "node ./scripts/test-regression.js",
-    "test": "npm run test:smoke && npm run test:regression",
-    "gui": "electron ./electron/main.cjs",
-    "gui:dev": "electron ./electron/main.cjs",
-    "gui:debug": "PDF_TO_MD_DEBUG=1 electron ./electron/main.cjs",
+    "test:rust": "cargo test --release --manifest-path rust/Cargo.toml",
+    "test": "npm run test:build && npm run test:smoke && npm run test:regression",
+    "gui": "cd rust/app && tauri dev",
+    "gui:debug": "cd rust/app && PDF_TO_MD_DEBUG_BUILD=1 tauri dev",
     "build:mac": "./scripts/build-mac.sh",
     "build:mac:debug": "./scripts/build-mac.sh --debug",
     "version:show": "node ./scripts/bump-revision.js --print",
-    "build:win": "electron-builder --win nsis",
     "release:prep": "./scripts/release-prep.sh",
     "docs:preview": "quarto preview docs",
     "docs:render": "quarto render docs"
   },
   "keywords": [],
-  "author": "",
+  "author": "Peter Beens",
   "license": "GPL-3.0-only",
   "type": "commonjs",
   "devDependencies": {
-    "electron": "^40.6.1",
-    "electron-builder": "^26.8.1"
+    "@tauri-apps/cli": "^2.12.4"
   },
-  "build": {
-    "appId": "com.pbeens.petespdftomd",
-    "productName": "Pete's PDF to MD",
-    "directories": {
-      "buildResources": "build"
-    },
-    "files": [
-      "app/**",
-      "electron/**",
-      "scripts/**",
-      "package.json"
-    ],
-    "asarUnpack": [
-      "scripts/**"
-    ],
-    "mac": {
-      "target": [
-        "dmg"
-      ],
-      "category": "public.app-category.productivity"
-    },
-    "dmg": {
-      "artifactName": "Pete-s-PDF-to-MD-v${version}-macOS.${ext}"
-    }
-  },
-  "buildRevision": "e",
-  "buildRevisionOf": "0.8.0"
+  "buildRevision": "c",
+  "buildRevisionOf": "1.0.0"
 }

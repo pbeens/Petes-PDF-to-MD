@@ -3,76 +3,79 @@ title: "Development"
 description: "Run the app from source, test changes, and make builds and releases."
 ---
 
-This page is for people who want to change the app or build it themselves. The repository's [`AGENTS.md`](https://github.com/pbeens/Pete-s-PDF-to-MD/blob/main/AGENTS.md) has the full contributor guide.
+This page is for people who want to change the app or build it themselves. The repository's [`AGENTS.md`](https://github.com/pbeens/Petes-PDF-to-MD/blob/main/AGENTS.md) has the full contributor guide.
 
 ## How the app is put together
 
 | Part | What it is | Files |
 |---|---|---|
-| Desktop window | An **Electron** app: a web page (HTML and JavaScript) packaged as a desktop program | `electron/`, `app/` |
-| Launcher | A small **Node.js** script that finds Python and starts the converter | `scripts/phase1.js` |
-| Converter | A **Python** program that reads the PDF with PyMuPDF (and optionally pdf-inspector) and writes the Markdown | `scripts/extract_outline.py` |
+| Converter | A **Rust** library and command-line tool that reads the PDF with [pdf-inspector](https://github.com/firecrawl/pdf-inspector) and lopdf, builds the outline and writes the Markdown | `rust/converter/` |
+| Desktop app | A **Tauri** app: a small Rust program that shows a web page (HTML, CSS and JavaScript) in the web view built into macOS, and calls the converter directly | `rust/app/`, `app/` |
 
-The window and the command line run the same launcher and converter, so a conversion gives the same result either way.
+**Rust** is a programming language that compiles to fast, self-contained programs. **Tauri** is a framework for desktop apps whose window is a web page; unlike Electron, which earlier versions used, it doesn't ship its own browser, which is why the app is about 6 MB instead of 110 MB.
+
+The app and the command line call the same converter, so a conversion gives the same result either way.
 
 ## Running from source
 
-You need **Node.js 20 or newer** (a JavaScript runtime; it includes `npm`, its package installer), **Python 3.10 or newer**, and **git**.
+You need **Rust** (install it from [rustup.rs](https://rustup.rs); it includes `cargo`, Rust's build tool), **Node.js 20 or newer** (a JavaScript runtime; it includes `npm`, its package installer, used here for the Tauri command-line tool and the tests), and **git**.
 
 ```bash
-git clone https://github.com/pbeens/Pete-s-PDF-to-MD.git
-cd Pete-s-PDF-to-MD
-npm install                      # Electron and the build tools
-python3 -m venv .venv            # a private Python just for this project
-source .venv/bin/activate
-python -m pip install --upgrade pymupdf pdf-inspector
-npm run gui                      # open the app
+git clone https://github.com/pbeens/Petes-PDF-to-MD.git
+cd Petes-PDF-to-MD
+npm install        # the Tauri command-line tool
+npm run gui        # build and open the app
 ```
 
-A **virtual environment** (`.venv`) is a separate copy of Python for this project, so its libraries don't mix with anything else on your computer. The launcher uses `.venv` automatically when it exists. On Windows, use `py -m venv .venv` and `.\.venv\Scripts\Activate.ps1`.
+The first build downloads and compiles the Rust libraries and takes a few minutes; later builds are quick.
 
 To convert from the command line:
 
 ```bash
-npm run phase1 -- --input "path/to/document.pdf" --conversion-mode single
+npm run convert -- --input "path/to/document.pdf" --conversion-mode single
 ```
 
-Options include `--out-dir`, `--conversion-mode single|major|sections`, `--include-section-metadata 0|1`, and the experimental `--text-engine hybrid`, which takes body text from pdf-inspector.
+Options: `--out-dir <folder>`, `--conversion-mode single|major|sections`, `--include-section-metadata 0|1`, and `--out-subdir <folder>` (an extra folder level inside the PDF's folder).
 
 ## Tests
 
 ```bash
-npm test     # smoke tests, then the regression suite
+npm test            # builds the converter, then the smoke tests and the regression suite
+npm run test:rust   # Rust unit tests, and the app's commands called the way the window calls them
 ```
 
-The tests convert real PDFs and check the results, for example that footnotes aren't deleted, coded headings are found, and tables keep their words. The test PDFs live in `tests/pdfs/`, which is not committed to git; a test whose PDF is missing is skipped. The list of tests and the rules for adding one are in [`tests/TEST_PLAN.md`](https://github.com/pbeens/Pete-s-PDF-to-MD/blob/main/tests/TEST_PLAN.md).
+The tests convert real PDFs and check the results, for example that footnotes aren't deleted, coded headings are found, two-column pages are read in order, and tables keep their words. The test PDFs live in `tests/pdfs/`, which is not committed to git; a test whose PDF is missing is skipped. The list of tests and the rules for adding one are in [`tests/TEST_PLAN.md`](https://github.com/pbeens/Petes-PDF-to-MD/blob/main/tests/TEST_PLAN.md).
 
-## Builds and version letters
+## Builds and versions
 
 ```bash
-npm run build:mac          # release build:  dist/Pete-s-PDF-to-MD-v0.8.0e-macOS.dmg
-npm run build:mac:debug    # debug build:    dist/Pete-s-PDF-to-MD-v0.8.0f-debug-macOS.dmg
+npm run build:mac          # release build:  dist/Pete-s-PDF-to-MD-v1.0-macOS.dmg
+npm run build:mac:debug    # debug build:    dist/Pete-s-PDF-to-MD-v1.0b-debug-macOS.dmg
 ```
 
-Every build moves to the next **revision letter** (`0.8.0a`, `0.8.0b`, …), stored as `buildRevision` in `package.json`, so no two installers share a name. The letter restarts at `a` when the version changes. `npm run version:show` prints the current one.
+The version is stored as `1.0.0` in `package.json`, the Rust `Cargo.toml` files and `rust/app/tauri.conf.json`, because those tools require three numbers. Users see **1.0**: a zero at the end is dropped.
 
-A **debug build** shows *(debug version)* in the window title and saves each conversion in a folder named after the build, for example `Annual-Report/v0.8.0f/`. Results from earlier builds stay in their own folders, which makes before-and-after comparisons easy. `npm run gui:debug` does the same when running from source.
+Every build also moves to the next **revision letter** (`a`, `b`, …), stored as `buildRevision` in `package.json`. Release builds don't show it. A **debug build** does (`v1.0b`): it shows *(debug version)* in the window title and saves each conversion in a folder named after the build, for example `Annual-Report/v1.0b/`. Results from earlier builds stay in their own folders, which makes before-and-after comparisons easy. `npm run gui:debug` runs a debug build from source, and `npm run version:show` prints the current version.
 
 ## Releases
 
 ```bash
-npm run release:prep -- --version 0.8.0 --build
+npm run release:prep -- --version 1.0.0 --build
 ```
 
-This checks that `package.json`, `CHANGELOG.md` and `README.md` all name the version, then makes a release build. Upload the DMG to a new release on the [Releases page](https://github.com/pbeens/Pete-s-PDF-to-MD/releases), tagged `v0.8.0`.
+This checks that `package.json`, the Rust crates, `CHANGELOG.md` and `README.md` all name the version, then makes a release build. Upload the DMG to a new release on the [Releases page](https://github.com/pbeens/Petes-PDF-to-MD/releases), tagged `v1.0`.
+
+## The old version
+
+The Electron app and Python converter used up to version 0.9 are kept, unmaintained, in `archive/electron-python/` in the repository. Its README says what each file was and how to check out the last version that used them.
 
 ## This website
 
 The site is built with [Quarto](https://quarto.org) from the `.qmd` files in `docs/`.
 
 ```bash
-quarto preview docs     # live preview in your browser
-quarto render docs      # build the site into docs/_site/
+npm run docs:preview    # live preview in your browser
+npm run docs:render     # build the site into docs/_site/
 ```
 
 The Changelog page is copied from `CHANGELOG.md` when the site is rendered, so it never needs editing by hand.

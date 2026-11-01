@@ -1,15 +1,15 @@
 [
   {
     "id": "CLI-01",
-    "name": "Phase 1 sections run succeeds and writes required indexes",
-    "type": "phase1_success",
+    "name": "Sections run succeeds and writes required indexes",
+    "type": "convert_success",
     "fixture": "tests/pdfs/Science SNC1W.pdf",
     "mode": "sections"
   },
   {
     "id": "CLI-02",
-    "name": "Unsupported engine is rejected",
-    "type": "unsupported_engine",
+    "name": "Unknown conversion mode is rejected",
+    "type": "unknown_mode",
     "fixture": "tests/pdfs/Science SNC1W.pdf"
   },
   {

@@ -1,4 +1,58 @@
-## [0.8.0] - 2026-10-25
+## [1.0] - 2026-10-26
+
+Version 1.0 is a complete rebuild. The converter and the app are now written in Rust, so the download is small, conversion is fast, and nothing else needs to be installed. (Version 0.9 was the development series for this rebuild and was never released on its own; its changes are listed here. Version 0.8 was not published either, so 1.0 is the first release since 0.7.2 and includes the 0.8 fixes below.)
+
+### Highlights
+
+- **Nothing to install.** The Python converter and its PyMuPDF library are gone. Download the app, open it, convert. No Python, no Terminal commands.
+- **About 6 MB instead of 110 MB.** The app is built with Tauri, which uses the web view macOS already has instead of shipping its own copy of Chrome as Electron did. Installed, it takes about 13 MB.
+- **4–15× faster.** A 242-page book converts in about 2 seconds (7 seconds in 0.8, 42 seconds in 0.7).
+- **Better text.** Bold, italics and links are kept; footnote markers become superscripts; two-column pages are read in the right order; pull-quotes become blockquotes; slides and pre-OCR'd scans are read from their hidden text layer.
+- **Drop a PDF anywhere on the window** to select it.
+- Same three output modes (**One file**, **By major heading**, **Individual sections**), same output files, same default folder (`Documents/Pete's PDF to MD Output`), and you can still choose another one.
+
+### Added
+
+- **New converter** (`rust/converter`, built on [pdf-inspector](https://github.com/firecrawl/pdf-inspector) and lopdf). It finds the same outline as the Python converter did on the test PDFs and keeps all their text. Ported from Python: headings from bookmarks, accessibility tags and curriculum codes; text-based heading detection for PDFs with neither; running-header, page-number and margin-label removal; footnotes moved to the end of each section; ToC tables; all three output modes and debug version folders.
+- **New app** (`rust/app`, Tauri 2). It uses the same window (`app/`) and calls the converter directly, with progress shown while it works. `app/tauri-bridge.js` connects the window to the app's commands.
+- A PDF can be dropped anywhere on the window, not just on the Select PDF button; the button lights up while a file is dragged over the window.
+- Tables that the text extraction reads row by row as run-on text are rebuilt from the page layout, and only kept when no words are lost.
+- **Reading order on two-column pages.** Each paragraph is placed on its page and, on pages that really have two columns, the left column is read before the right one (full-width headings and banners stay in place). This fixes pages where the top of the right column was read before the end of the left (`GCPSE_Efficiency.pdf` page 12).
+- Two columns that the text extraction read across into one fake table (a copyright notice beside a contents list) are split back into their columns, so the contents list reads correctly.
+- **Pull-quotes** (large text in a box beside a column) are taken out of the sentences they were woven into and kept as one Markdown blockquote (`> …`) after the paragraph they interrupted.
+- A sentence split at a page or column break is also rejoined when the second part starts with a lowercase bracket ("… provision" / "(e.g. urban piped water supply) …") or the first ends with "&".
+- **Slides and pre-OCR'd scans.** Pages that are pictures with their text in an invisible layer behind them (exported slide decks, scans that were already run through text recognition) are converted from that layer instead of being reported as "images with no text". Each page's bookmark title becomes its heading, even when the title wraps over several lines, and a status note says the text came from a recognition layer.
+- Repeated footers of up to ten words that carry the page number ("Getting Started with Agentic AI 02") are removed.
+- `npm run convert -- --input file.pdf` runs the converter from the command line.
+- Regression tests `READ-001`, `READ-002`, `QUOTE-001` and `LAYER-001`; app tests (`cargo test -p petes-pdf-to-md-app`) that call the app's commands the way the window does, including a full conversion and a file drop.
+- A placeholder app icon (`rust/app/icons/`).
+
+### Changed
+
+- Version numbers shown to users drop a zero patch number: **v1.0**, not v1.0.0. Release builds no longer show a revision letter; debug builds still do (`v1.0b`), and still save output in a per-build folder.
+- `npm run gui` runs the app from source and `npm run build:mac` builds `dist/Pete-s-PDF-to-MD-v1.0-macOS.dmg`; both now use the Tauri app.
+- `npm test` builds the converter first and runs the smoke and regression suites against it.
+- Running headers and footers that include the word "Page" ("Report Title Page 3", "Page 16 Report Title") are removed.
+- A paragraph that ends with a comma is joined to the next one (sentences split at a page or column break, such as "(Estache & Rossi," / "2002) and …"), except when the next one is a photo caption or credit.
+- Image-only pages (a cover, a full-page figure) no longer trigger a warning dialog; the app notes them in the status line. The warning appears when at least a quarter of the pages have no text, which means the document is scanned and needs text recognition (OCR).
+- With no build of the current version yet, the window title and `npm run version:show` no longer show the previous version's revision letter.
+- Regression text checks ignore Markdown emphasis marks.
+
+### Removed
+
+- The Electron app, the Python converter (`scripts/extract_outline.py`) and its launcher (`scripts/phase1.js`), with their `npm` scripts (`phase1`, `build:win`, `build:tauri:*`, `tauri:dev`) and the Electron dependencies. They are kept for reference in `archive/electron-python/`.
+- The experimental `--text-engine hybrid` option and the `PDF_TO_MD_ENGINE`, `PDF_TO_MD_PYTHON` and `PDF_TO_MD_RUST_BIN` settings, which chose between converters and Pythons.
+- Python-specific tests `PY-001`, `PKG-001` and `PKG-002`.
+- Windows builds, for now. The Electron app could be built for Windows; the Tauri app has not been built or tested there yet.
+
+### Known gaps
+
+- Four achievement charts in the Ontario test PDFs still come out as run-on text (the Python converter rendered them as tables).
+- Footnotes whose text starts in lowercase stay where they appear instead of moving to the end of the section.
+- Photo captions and figure labels can still sit inside the sentence they interrupt.
+- Hidden text layers: side-by-side content on a slide (two columns, a table) is read across, one row per line.
+
+## [0.8.0] - 2026-10-25 (built, not published; included in 1.0)
 
 ### Fixed
 

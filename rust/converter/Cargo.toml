@@ -1,0 +1,25 @@
+[package]
+name = "petes-pdf-to-md"
+version = "1.0.0"
+edition = "2021"
+license = "GPL-3.0-only"
+description = "Convert PDF documents into structured Markdown split by heading, without Python."
+repository = "https://github.com/pbeens/Petes-PDF-to-MD"
+
+[lib]
+name = "petes_pdf_core"
+path = "src/lib.rs"
+
+[[bin]]
+name = "petes-pdf-to-md"
+path = "src/main.rs"
+
+[dependencies]
+# PDF text, fonts, accessibility tags and per-page Markdown (MIT).
+pdf-inspector = "=1.25.2"
+# Bookmarks and page sizes; same version pdf-inspector uses, so it is built once.
+lopdf = "0.45"
+regex = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+similar = "2"

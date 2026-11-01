@@ -1,13 +1,19 @@
 #!/usr/bin/env node
 /*
- * Advance the build revision letter in package.json (0.8.0a -> 0.8.0b).
+ * Advance the build revision letter in package.json and print the display
+ * version for the build.
  *
  * The semver "version" stays x.y.z; "buildRevision" holds the letter and
  * "buildRevisionOf" the version it belongs to. When the version changes,
  * the letter restarts at "a". After "z" comes "aa".
  *
- * Usage: node scripts/bump-revision.js [--print]
+ * The display version drops a zero patch number (1.0.0 -> 1.0). Release builds
+ * show just that; debug builds add the letter (1.0b) so each one has its own
+ * output folder and installer name. rust/app/build.rs applies the same rule.
+ *
+ * Usage: node scripts/bump-revision.js [--print] [--debug]
  *   --print  show the current display version without changing anything
+ *   --debug  the display version of a debug build (with the letter)
  */
 const fs = require('node:fs');
 const path = require('node:path');
@@ -29,8 +35,17 @@ function nextLetters(letters) {
   return chars.join('');
 }
 
+const debug = process.argv.includes('--debug');
+
+function displayVersion(letter) {
+  const short = pkg.version.replace(/^(\d+\.\d+)\.0$/, '$1');
+  return debug ? `${short}${letter}` : short;
+}
+
 if (process.argv.includes('--print')) {
-  process.stdout.write(`${pkg.version}${pkg.buildRevision || ''}\n`);
+  // A letter left over from an older version means no build of this version yet.
+  const letter = pkg.buildRevisionOf === pkg.version ? pkg.buildRevision || '' : '';
+  process.stdout.write(`${displayVersion(letter)}\n`);
   process.exit(0);
 }
 
@@ -40,4 +55,4 @@ pkg.buildRevisionOf = pkg.version;
 
 const indent = raw.match(/^(\s+)"/m)?.[1] || '  ';
 fs.writeFileSync(pkgPath, `${JSON.stringify(pkg, null, indent)}\n`);
-process.stdout.write(`${pkg.version}${pkg.buildRevision}\n`);
+process.stdout.write(`${displayVersion(pkg.buildRevision)}\n`);

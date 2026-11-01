@@ -14,7 +14,7 @@ A PDF is a set of instructions for drawing a page: put these letters at these po
 The outline is the most important part of a conversion, because it decides how the document is split into sections. The app uses the best source available, in this order:
 
 1. **Bookmarks.** Many PDFs include a clickable table of contents in the viewer's sidebar, called *bookmarks* or the *document outline*. When it exists, the app uses it.
-2. **Accessibility tags.** A *tagged* PDF labels each part of the document for screen readers: this is a level-2 heading, this is a paragraph, this is a list. When a PDF has no bookmarks, or its bookmarks are all on one level, the app uses the heading tags instead, which keeps the document's real levels. This needs the optional **pdf-inspector** library (see [Getting started](getting-started.qmd#step-2-one-time-setup-python)).
+2. **Accessibility tags.** A *tagged* PDF labels each part of the document for screen readers: this is a level-2 heading, this is a paragraph, this is a list. When a PDF has no bookmarks, or its bookmarks are all on one level, the app uses the heading tags instead, which keeps the document's real levels.
 3. **The text itself.** With neither, the app looks for lines that are larger or bolder than the body text and treats them as headings. This works well for most documents, but it is a best guess.
 
 The `Source` line in each section (when *Include section info in files* is on) tells you which method was used.
@@ -25,33 +25,43 @@ Some tagged PDFs style lettered or numbered headings such as *A. Getting Started
 
 ## Rebuilding tables
 
-When PyMuPDF 1.23 or newer is installed, the app looks for tables on each page by their ruling lines and cell layout. It then:
-
-- rebuilds each cell's text from the words inside it, so words keep their spaces (some PDFs store text without space characters);
-- gives each word to exactly one cell, so text isn't repeated when cells overlap;
-- removes empty columns and merges columns that a merged cell split in two;
-- recognises rubric-style charts with four achievement levels and labels their columns *Level 1* to *Level 4*.
+The app finds tables from the way text lines up in rows and columns on the page, and writes them as Markdown tables. Sometimes a table's cells come out of the page one after another as a long run-on paragraph. When that happens, the app rebuilds the table from the positions of the words, and keeps the rebuilt table only if every word made it in; otherwise it leaves the text as it was, so nothing is lost.
 
 Tables that are really pictures (an image of a chart) can't be rebuilt.
+
+## Getting the reading order right
+
+A PDF doesn't always store text in the order you read it. On every page the app:
+
+- places each paragraph on the page it belongs to;
+- reads **two-column pages** column by column: the whole left column, then the right, with full-width headings and banners kept in place;
+- splits apart two columns that were read straight across as if they were one table;
+- takes **pull-quotes** (large text in a box beside the column) out of the sentence they interrupt and keeps them as a Markdown quote (`> …`) after that paragraph.
+
+Each of these steps checks that no words are lost or repeated before it changes anything.
 
 ## Cleaning up the text
 
 On every page the app:
 
-- removes **running headers and footers**, the lines repeated at the top or bottom of each page, and **page numbers**, including ones printed beside the header;
-- joins **sentences split by a page break**;
+- removes **running headers and footers**, the lines repeated at the top or bottom of each page, and **page numbers**, including ones printed beside the header or inside a footer;
+- joins **sentences split by a page or column break**;
 - keeps **footnotes** as separate paragraphs and moves them to the end of their section, so they don't interrupt the text;
-- reads **two-column pages** column by column;
+- keeps **bold**, *italics* and links, and writes footnote markers as superscripts;
 - turns bullet characters into Markdown list items.
+
+## Slides and pre-scanned documents
+
+Some PDFs are pictures of pages with the text stored in an invisible layer behind each picture: slides exported from PowerPoint or Keynote, or scans that have already been through text recognition (OCR). The app reads that hidden layer, uses each page's bookmark as its heading, and notes in the status line that the text came from a recognition layer.
 
 ## What works well, and what doesn't
 
 | Works well | Works less well |
 |---|---|
 | Text-based PDFs made from Word, InDesign or a web page | Scanned PDFs (pictures of pages): no text to read |
-| Tagged PDFs, such as most government documents | Pages laid out like posters or slides, with text boxes scattered around |
+| Tagged PDFs, such as most government documents | Pages laid out like posters, with text boxes scattered around; side-by-side boxes on slides are read across, row by row |
 | PDFs with bookmarks | Tables drawn as images |
-| Single- and two-column layouts | Complex nested tables |
+| Single- and two-column layouts | Complex nested tables; some charts with many short cells |
 
 For scanned PDFs, run them through a text-recognition (OCR) tool first. macOS Preview and Adobe Acrobat can both do this.
 

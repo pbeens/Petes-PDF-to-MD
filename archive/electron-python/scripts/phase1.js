@@ -14,6 +14,10 @@ function parseArgs(argv) {
     conversionMode: 'sections',
     textEngine: 'pymupdf',
   };
+  // PDF_TO_MD_ENGINE picks the engine when --engine isn't given (e.g. "rust").
+  if (process.env.PDF_TO_MD_ENGINE) {
+    opts.engine = process.env.PDF_TO_MD_ENGINE.toLowerCase();
+  }
 
   for (let i = 2; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -60,7 +64,7 @@ function parseArgs(argv) {
 function printHelp() {
   console.log(
     'Usage: node scripts/phase1.js --input <file.pdf> [--out-dir output] '
-    + '[--engine auto|pymupdf] [--max-section-chars 8000] '
+    + '[--engine auto|pymupdf|rust] [--max-section-chars 8000] '
     + '[--include-section-metadata 1|0] [--conversion-mode single|major|sections] '
     + '[--text-engine pymupdf|hybrid] [--out-subdir v0.8.0b]'
   );
@@ -116,9 +120,33 @@ function findPythonCandidates() {
   return candidates.filter((bin) => commandExists(bin));
 }
 
+// The Rust converter (rust/): one self-contained binary, no Python needed.
+function findRustBinary() {
+  const exe = process.platform === 'win32' ? 'petes-pdf-to-md.exe' : 'petes-pdf-to-md';
+  const candidates = [
+    process.env.PDF_TO_MD_RUST_BIN,
+    process.resourcesPath ? path.join(process.resourcesPath, 'bin', exe) : '',
+    // Packaged app: Resources/app.asar.unpacked/scripts -> Resources/bin
+    path.resolve(__dirname, '..', '..', 'bin', exe),
+    path.resolve(__dirname, '..', 'rust', 'target', 'release', exe),
+  ].filter(Boolean);
+  return candidates.find((candidate) => fs.existsSync(candidate)) || '';
+}
+
 function resolveEngine(requested) {
-  if (requested !== 'auto' && requested !== 'pymupdf') {
+  if (!['auto', 'pymupdf', 'rust'].includes(requested)) {
     throw new Error(`Unsupported engine: ${requested}`);
+  }
+
+  // "auto" prefers the bundled Rust converter, which needs no Python.
+  if (requested === 'rust' || requested === 'auto') {
+    const rustBin = findRustBinary();
+    if (rustBin) {
+      return { engine: 'rust', rustBin };
+    }
+    if (requested === 'rust') {
+      throw new Error('The Rust converter was not found. Build it with: cd rust && cargo build --release');
+    }
   }
 
   const pythonCandidates = findPythonCandidates();
@@ -181,6 +209,26 @@ function run() {
   } catch (err) {
     console.error(err.message);
     process.exit(1);
+  }
+
+  const converterArgs = [
+    '--input', inputPath,
+    '--out-dir', opts.outDir,
+    '--max-section-chars', String(opts.maxSectionChars),
+    '--include-section-metadata', String(opts.includeSectionMetadata),
+    '--conversion-mode', String(opts.conversionMode),
+    '--text-engine', String(opts.textEngine),
+    ...(opts.outSubdir ? ['--out-subdir', String(opts.outSubdir)] : []),
+  ];
+
+  if (selected.engine === 'rust') {
+    console.log('PROGRESS: Running rust extraction');
+    const rustChild = spawnSync(selected.rustBin, converterArgs, { stdio: 'inherit', windowsHide: true });
+    if (rustChild.status !== 0) {
+      process.exit(rustChild.status || 1);
+    }
+    console.log('PROGRESS: Core extraction complete; waiting for subprocess exit and file flush');
+    return;
   }
 
   const scriptPath = resolveExtractScriptPath();

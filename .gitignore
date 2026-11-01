@@ -32,3 +32,9 @@ session-metrics.md
 # Quarto website build output
 docs/_site/
 docs/.quarto/
+
+# Rust build output
+rust/target/
+
+# Tauri generated files
+rust/app/gen/

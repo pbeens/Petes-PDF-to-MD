@@ -23,14 +23,22 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-function runPhase1(args) {
-  const script = path.join(ROOT, 'scripts', 'phase1.js');
-  const child = spawnSync(process.execPath, [script, ...args], {
+// The converter binary built by `npm run test:build` (or PDF_TO_MD_BIN).
+function converterBinary() {
+  if (process.env.PDF_TO_MD_BIN) return process.env.PDF_TO_MD_BIN;
+  const name = process.platform === 'win32' ? 'petes-pdf-to-md.exe' : 'petes-pdf-to-md';
+  const bin = path.join(ROOT, 'rust', 'target', 'release', name);
+  assert(fs.existsSync(bin), `Converter not built: ${path.relative(ROOT, bin)}. Run \`npm run test:build\` (npm test does this).`);
+  return bin;
+}
+
+function runConverter(args, env = process.env) {
+  return spawnSync(converterBinary(), args, {
     cwd: ROOT,
     encoding: 'utf8',
     windowsHide: true,
+    env,
   });
-  return child;
 }
 
 function loadCases() {
@@ -54,8 +62,8 @@ function runCase(testCase) {
 
   let details = {};
   try {
-    if (testCase.type === 'phase1_success') {
-      const child = runPhase1([
+    if (testCase.type === 'convert_success') {
+      const child = runConverter([
         '--input', fixtureAbs,
         '--out-dir', caseRunDir,
         '--conversion-mode', testCase.mode || 'sections',
@@ -76,17 +84,17 @@ function runCase(testCase) {
       assert(mdFiles.length > 0, 'No section markdown files generated');
 
       details = { outputDir: docDir, sectionFiles: mdFiles.length };
-    } else if (testCase.type === 'unsupported_engine') {
-      const child = runPhase1([
+    } else if (testCase.type === 'unknown_mode') {
+      const child = runConverter([
         '--input', fixtureAbs,
-        '--engine', 'badengine',
+        '--conversion-mode', 'chapters',
       ]);
       assert(child.status !== 0, 'Expected non-zero exit code');
       const combined = `${child.stdout || ''}\n${child.stderr || ''}`;
-      assert(combined.includes('Unsupported engine'), 'Expected "Unsupported engine" error message');
+      assert(combined.includes('Unknown mode: chapters'), 'Expected "Unknown mode" error message');
       details = { exitCode: child.status };
     } else if (testCase.type === 'single_shape') {
-      const child = runPhase1([
+      const child = runConverter([
         '--input', fixtureAbs,
         '--out-dir', caseRunDir,
         '--conversion-mode', 'single',
@@ -103,7 +111,7 @@ function runCase(testCase) {
 
       details = { outputDir: docDir, markdownFile: rootMd[0] };
     } else if (testCase.type === 'dot_leader_table') {
-      const child = runPhase1([
+      const child = runConverter([
         '--input', fixtureAbs,
         '--out-dir', caseRunDir,
         '--conversion-mode', testCase.mode || 'sections',

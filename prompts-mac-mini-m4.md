@@ -4,6 +4,78 @@ Prompt log from the Mac mini M4 (`m4-mini`). Another computer may have its own l
 
 Sources: entries from 2026-10-24 were logged live. Entries from 2026-02-26 14:58 to 2026-04-02 were reconstructed on 2026-10-24 from local Codex session transcripts (`~/.codex/sessions`). Entries up to 2026-02-26 14:54 come from the last committed `prompts.md` (git `afc792e`), deleted in `4057ab6`; their times are converted from UTC, and the first 18 share one bulk-logged time.
 
+## 2026-10-26 09:30
+
+- **Goal:** Check that 1.0 is ready to upload, and explain what sets the converter apart.
+- **Prompt:** Asked to archive old releases in `dist/`, remove unused folders (`test-hybrid`, `output`, stale `node_modules` packages), double-check readiness to upload, and add a section to the website and README on the converter's unique capabilities (splitting by major heading or by section, or one file), and asked whether it still runs from the command line.
+- **Host:** m4-mini
+- **Agent:** Claude Code
+- **Context:** Found the GitHub repository renamed to `pbeens/Petes-PDF-to-MD` (links updated; site URL `peter.beens.ca/Petes-PDF-to-MD/`) and v0.8.0 never published (latest public release v0.7.2); changelog and release notes adjusted. DMG rebuilt. "What makes it different" added to the home page and README. CLI: `npm run convert` from source.
+
+## 2026-10-25 17:00
+
+- **Goal:** Prepare the 1.0 release and overhaul the repository around the Rust/Tauri app.
+- **Prompt:** Confirmed drag and drop works anywhere on the window and asked to release: move everything based on the old Electron version out of the way, bump to version 1.0 (two-part version), take a new screenshot, and update the website to present 1.0 as a major rebuild in Rust, with its benefits (three output modes, default output folder that can be changed). Chose an `archive/` folder, local preparation only (no publishing), a new attempt at the screenshot, and macOS only for now.
+- **Host:** m4-mini
+- **Agent:** Claude Code
+- **Context:** Electron app, Python converter, `phase1.js` and the electron-builder script moved to `archive/electron-python/`; tests run the Rust binary; `npm run build:mac`/`gui` now use Tauri; semver 1.0.0 with display version 1.0 (letter only on debug builds); README, AGENTS.md, CHANGELOG `[1.0]`, `rust/README.md`, test plan, release skill and all website pages updated. Built `dist/Pete-s-PDF-to-MD-v1.0-macOS.dmg`. Screenshot blocked: VS Code lacks Screen Recording permission.
+
+## 2026-10-25 14:40
+
+- **Goal:** Make drag and drop work in the Tauri app.
+- **Prompt:** Reported that dropping a PDF on the Select PDF button still did not work in v0.9.0i, and asked whether it could work another way, perhaps for the whole window, or else be removed.
+- **Host:** m4-mini
+- **Agent:** Claude Code
+- **Context:** The Rust side now forwards window drop events to the page (`file-drag`), and a drop anywhere on the window selects the PDF; no position check. Mock-runtime test `file_drops_reach_the_page`. Debug DMG `Pete-s-PDF-to-MD-v0.9.0j-debug-tauri-macOS.dmg`.
+
+## 2026-10-25 14:00
+
+- **Goal:** Restore drag and drop onto the Select PDF button.
+- **Prompt:** Asked to bring back the hidden feature of dropping a PDF onto the Select PDF button; also reported running three or four conversions with the Tauri build into version-number folders.
+- **Host:** m4-mini
+- **Agent:** Claude Code
+- **Context:** Bridge position check changed for macOS units (v0.9.0i); did not fix it. Tauri 0.9.0h outputs matched the Electron results.
+
+## 2026-10-25 13:00
+
+- **Goal:** Build the Tauri version of the app.
+- **Prompt:** Reviewed the v0.9.0g slideshow output (multi-column slides read across), then asked to move on to the Tauri window.
+- **Host:** m4-mini
+- **Agent:** Claude Code
+- **Context:** New `rust/app` (Tauri 2) reusing `app/` via `app/tauri-bridge.js`; commands mirror `electron/main.cjs`; converter runs in-process with a progress callback. Mock-runtime tests pass. Debug DMG `Pete-s-PDF-to-MD-v0.9.0h-debug-tauri-macOS.dmg` (6.2 MB). GUI not yet clicked through (no screen access).
+
+## 2026-10-25 12:30
+
+- **Goal:** Check more test documents on v0.9.0f.
+- **Prompt:** Shared v0.9.0f outputs for AI-in-Education and GCPSE, and a text-only slideshow (`Getting Started with Agentic AI - Peter Beens.pdf`) that was reported as 21 scanned pages.
+- **Host:** m4-mini
+- **Agent:** Claude Code
+- **Context:** The slides are images with an invisible OCR text layer, which pdf-inspector leaves out. Now read via region extraction, with bookmark titles placed per page; footer-with-page-number removal extended to ten words. Test LAYER-001. AI and GCPSE outputs matched expectations.
+
+## 2026-10-25 11:00
+
+- **Goal:** Give the Rust converter its own reading order.
+- **Prompt:** Tested a two-column PDF (`GCPSE_Efficiency.pdf`), reviewed the output, then approved working on reading order from the page layout.
+- **Host:** m4-mini
+- **Agent:** Claude Code
+- **Context:** New `rust/converter/src/reading.rs`: whole-document Markdown as base, paragraphs assigned to pages, two-column pages re-sorted, fake two-column tables split, pull-quotes turned into blockquotes, every split checked for word loss. Footer "Page N" removal and comma/bracket rejoining. Four single-column test PDFs unchanged. Tests READ-001, READ-002, QUOTE-001. A first per-page attempt was abandoned because it broke tables and lists across page breaks.
+
+## 2026-10-25 08:10
+
+- **Goal:** Continue the Rust conversion.
+- **Prompt:** Continue (port the remaining pieces and wire the Rust converter into the app).
+- **Host:** m4-mini
+- **Agent:** Claude Code
+- **Context:** Ported text-based heading detection (identical to Python on two PDFs); run-on table repair from page layout with a no-word-loss guard; sequential footnote handling; `phase1.js` engine `rust` and `auto` preferring it; binary bundled at `Resources/bin/`. Full test suite passes on both engines. Debug DMG v0.9.0b converts with no usable Python. Left uncommitted.
+
+## 2026-10-25 06:40
+
+- **Goal:** Consolidate 0.8 builds, move to 0.9, and start the Rust conversion.
+- **Prompt:** Keep only the last 0.8 installer in `dist/`, bump the version to 0.9, and start converting the program to Rust. Also asked that changes no longer be committed automatically, so they can be reviewed first.
+- **Host:** m4-mini
+- **Agent:** Claude Code
+- **Context:** Deleted 0.8.0, 0.8.0a, 0.8.0c-debug and 0.8.0d-debug DMGs (kept 0.8.0e). Branch `rust-port`, version 0.9.0. New `rust/` crate ports the hybrid path (outline from bookmarks/tags, body cleanup, output writer); same outline as Python on all four test PDFs, 4–15× faster. Left uncommitted for review.
+
 ## 2026-10-25 06:10
 
 - **Goal:** Build the v0.8.0e release and start a project website.

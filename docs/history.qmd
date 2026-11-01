@@ -5,13 +5,17 @@ description: "How the project started, and the original plan."
 
 Pete's PDF to MD started in February 2026 as a way to get long, structured PDF documents into AI tools without losing their structure. The first prototype used Swift and Apple's PDF tools, which only ran on macOS, so the converter was rewritten in Python with PyMuPDF to work on both Macs and PCs, with an Electron window added on top.
 
+That version worked well, but everyone who downloaded it had to install Python and two add-ons from Terminal first, and the app was a 110 MB download. In October 2026 a review of [pdf-inspector](https://github.com/firecrawl/pdf-inspector), a PDF library written in Rust, showed a way out. Version 1.0 is the result: the converter was rewritten in Rust on top of pdf-inspector, every cleanup rule from the Python version was carried over and checked against the same test documents, and the window moved from Electron to Tauri. The app is now a single 6 MB download with nothing to install, and it converts documents 4 to 15 times faster.
+
 The plan below, written at the start, is kept for the record. Most of it happened: the three output files, the split modes, the Electron interface and the right-click actions all shipped by v0.7.0. One thing changed along the way: the project chose PyMuPDF instead of Marker for extraction, to keep the app small and fast.
 
 For what changed in each release, see the [Changelog](changelog.qmd).
 
 ## Looking ahead
 
-The biggest limitation today is that the app relies on the Python installed on the user's computer. A self-contained version, possibly rewritten in Rust with the Tauri framework, is being evaluated so that nothing extra needs to be installed.
+- A Windows version of the 1.0 app.
+- A search box to find sections and text in a converted document.
+- Better handling of the remaining hard cases: charts with many short cells, and side-by-side boxes on slides.
 
 ---
 

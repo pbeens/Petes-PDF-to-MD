@@ -23,9 +23,17 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-function runPhase1(args, env = process.env) {
-  const script = path.join(ROOT, 'scripts', 'phase1.js');
-  return spawnSync(process.execPath, [script, ...args], {
+// The converter binary built by `npm run test:build` (or PDF_TO_MD_BIN).
+function converterBinary() {
+  if (process.env.PDF_TO_MD_BIN) return process.env.PDF_TO_MD_BIN;
+  const name = process.platform === 'win32' ? 'petes-pdf-to-md.exe' : 'petes-pdf-to-md';
+  const bin = path.join(ROOT, 'rust', 'target', 'release', name);
+  assert(fs.existsSync(bin), `Converter not built: ${path.relative(ROOT, bin)}. Run \`npm run test:build\` (npm test does this).`);
+  return bin;
+}
+
+function runConverter(args, env = process.env) {
+  return spawnSync(converterBinary(), args, {
     cwd: ROOT,
     encoding: 'utf8',
     windowsHide: true,
@@ -33,11 +41,17 @@ function runPhase1(args, env = process.env) {
   });
 }
 
-// Tagged PDFs get their outline from accessibility tags when pdf-inspector is
-// installed; the no-TOC fallback checks need that path switched off.
+// Tagged PDFs get their outline from accessibility tags; the no-TOC fallback
+// checks need that path switched off.
 const NO_TAGS_ENV = { ...process.env, PDF_TO_MD_NO_TAGS: '1' };
 
 class SkipCase extends Error {}
+
+// Text checks compare wording, not styling: the converter keeps bold and
+// italics (*parent(s)*).
+function plainText(markdown) {
+  return markdown.replace(/\*\*|__|\*|`/g, '');
+}
 
 function loadCases() {
   const raw = fs.readFileSync(CASES_FILE, 'utf8');
@@ -78,7 +92,7 @@ function executeAutomatedCase(testCase) {
   cleanDir(caseRunDir);
 
   if (testCase.check === 'single_no_generated_toc') {
-    const child = runPhase1(['--input', fixtureAbs, '--out-dir', caseRunDir, '--conversion-mode', 'single'], NO_TAGS_ENV);
+    const child = runConverter(['--input', fixtureAbs, '--out-dir', caseRunDir, '--conversion-mode', 'single'], NO_TAGS_ENV);
     assert(child.status === 0, `Expected exit 0, got ${child.status}`);
     const docDir = toDocDir(caseRunDir, fixtureAbs);
     const mdPath = path.join(docDir, `${path.parse(fixtureAbs).name}.md`);
@@ -91,7 +105,7 @@ function executeAutomatedCase(testCase) {
   }
 
   if (testCase.check === 'single_one_heading_fallback') {
-    const child = runPhase1(['--input', fixtureAbs, '--out-dir', caseRunDir, '--conversion-mode', 'single'], NO_TAGS_ENV);
+    const child = runConverter(['--input', fixtureAbs, '--out-dir', caseRunDir, '--conversion-mode', 'single'], NO_TAGS_ENV);
     assert(child.status === 0, `Expected exit 0, got ${child.status}`);
     const docDir = toDocDir(caseRunDir, fixtureAbs);
     const outlinePath = path.join(docDir, 'outline.json');
@@ -103,11 +117,8 @@ function executeAutomatedCase(testCase) {
   }
 
   if (testCase.check === 'single_tagged_headings') {
-    const child = runPhase1(['--input', fixtureAbs, '--out-dir', caseRunDir, '--conversion-mode', 'single']);
+    const child = runConverter(['--input', fixtureAbs, '--out-dir', caseRunDir, '--conversion-mode', 'single']);
     assert(child.status === 0, `Expected exit 0, got ${child.status}`);
-    if (String(child.stdout).includes('using text heuristics')) {
-      throw new SkipCase('pdf-inspector is not installed for the Python in use');
-    }
     const docDir = toDocDir(caseRunDir, fixtureAbs);
     const outline = JSON.parse(fs.readFileSync(path.join(docDir, 'outline.json'), 'utf8'));
     const tagged = outline.filter((item) => item.source === 'pdf-tags');
@@ -118,24 +129,22 @@ function executeAutomatedCase(testCase) {
   }
 
   if (testCase.check === 'footnotes_kept') {
-    const child = runPhase1(['--input', fixtureAbs, '--out-dir', caseRunDir, '--conversion-mode', 'sections']);
+    const child = runConverter(['--input', fixtureAbs, '--out-dir', caseRunDir, '--conversion-mode', 'sections']);
     assert(child.status === 0, `Expected exit 0, got ${child.status}`);
     const docDir = toDocDir(caseRunDir, fixtureAbs);
-    const text = findMarkdownFiles(docDir).map((f) => fs.readFileSync(f, 'utf8')).join('\n');
+    const text = plainText(findMarkdownFiles(docDir).map((f) => fs.readFileSync(f, 'utf8')).join('\n'));
     assert(text.includes(testCase.expectText), `Missing footnote text: ${testCase.expectText}`);
     return { outputDir: docDir };
   }
 
   if (testCase.check === 'outline_titles') {
-    const child = runPhase1(['--input', fixtureAbs, '--out-dir', caseRunDir, '--conversion-mode', 'single']);
+    const child = runConverter(['--input', fixtureAbs, '--out-dir', caseRunDir, '--conversion-mode', 'single']);
     assert(child.status === 0, `Expected exit 0, got ${child.status}`);
-    if (testCase.needsTags && String(child.stdout).includes('pdf-inspector is not installed')) {
-      throw new SkipCase('pdf-inspector is not installed for the Python in use');
-    }
     const docDir = toDocDir(caseRunDir, fixtureAbs);
     const titles = JSON.parse(fs.readFileSync(path.join(docDir, 'outline.json'), 'utf8')).map((item) => item.title);
-    if (testCase.needsTags && !JSON.parse(fs.readFileSync(path.join(docDir, 'outline.json'), 'utf8')).some((i) => i.source === 'pdf-tags')) {
-      throw new SkipCase('Tagged headings were not used (pdf-inspector unavailable)');
+    if (testCase.needsTags) {
+      const outline = JSON.parse(fs.readFileSync(path.join(docDir, 'outline.json'), 'utf8'));
+      assert(outline.some((i) => i.source === 'pdf-tags'), 'Expected headings from the PDF tags');
     }
     for (const title of testCase.expectTitles || []) {
       assert(titles.includes(title), `Missing outline title: ${title}`);
@@ -144,10 +153,10 @@ function executeAutomatedCase(testCase) {
   }
 
   if (testCase.check === 'text_rules') {
-    const child = runPhase1(['--input', fixtureAbs, '--out-dir', caseRunDir, '--conversion-mode', testCase.mode || 'single']);
+    const child = runConverter(['--input', fixtureAbs, '--out-dir', caseRunDir, '--conversion-mode', testCase.mode || 'single']);
     assert(child.status === 0, `Expected exit 0, got ${child.status}`);
     const docDir = toDocDir(caseRunDir, fixtureAbs);
-    const text = findMarkdownFiles(docDir).map((f) => fs.readFileSync(f, 'utf8')).join('\n');
+    const text = plainText(findMarkdownFiles(docDir).map((f) => fs.readFileSync(f, 'utf8')).join('\n'));
     for (const expected of testCase.expectText || []) {
       assert(text.includes(expected), `Missing text: ${expected}`);
     }
@@ -159,24 +168,24 @@ function executeAutomatedCase(testCase) {
 
   if (testCase.check === 'version_subdir') {
     const sub = 'v9.9.9z';
-    let child = runPhase1(['--input', fixtureAbs, '--out-dir', caseRunDir, '--conversion-mode', 'sections', '--out-subdir', sub]);
+    let child = runConverter(['--input', fixtureAbs, '--out-dir', caseRunDir, '--conversion-mode', 'sections', '--out-subdir', sub]);
     assert(child.status === 0, `Expected exit 0, got ${child.status}`);
     const docDir = toDocDir(caseRunDir, fixtureAbs);
     const versionDir = path.join(docDir, sub);
     assert(fs.existsSync(path.join(versionDir, 'outline.json')), 'Missing outline.json in version folder');
-    const singleRun = runPhase1(['--input', fixtureAbs, '--out-dir', path.join(caseRunDir, 'single'), '--conversion-mode', 'single', '--out-subdir', sub]);
+    const singleRun = runConverter(['--input', fixtureAbs, '--out-dir', path.join(caseRunDir, 'single'), '--conversion-mode', 'single', '--out-subdir', sub]);
     assert(singleRun.status === 0, `Expected exit 0 for single run, got ${singleRun.status}`);
     const singleMd = path.join(toDocDir(path.join(caseRunDir, 'single'), fixtureAbs), sub, `${path.parse(fixtureAbs).name}.md`);
     assert(fs.existsSync(singleMd), `Single-mode file in version folder should be named after the PDF: ${path.basename(singleMd)}`);
     const before = findMarkdownFiles(versionDir).length;
-    child = runPhase1(['--input', fixtureAbs, '--out-dir', caseRunDir, '--conversion-mode', 'single']);
+    child = runConverter(['--input', fixtureAbs, '--out-dir', caseRunDir, '--conversion-mode', 'single']);
     assert(child.status === 0, `Expected exit 0 for plain run, got ${child.status}`);
     assert(findMarkdownFiles(versionDir).length === before, 'A plain run changed files in the version folder');
     return { outputDir: versionDir, files: before };
   }
 
   if (testCase.check === 'front_matter_present') {
-    const child = runPhase1(['--input', fixtureAbs, '--out-dir', caseRunDir, '--conversion-mode', 'sections']);
+    const child = runConverter(['--input', fixtureAbs, '--out-dir', caseRunDir, '--conversion-mode', 'sections']);
     assert(child.status === 0, `Expected exit 0, got ${child.status}`);
     const docDir = toDocDir(caseRunDir, fixtureAbs);
     const sectionsDir = path.join(docDir, 'Sections');
@@ -194,7 +203,7 @@ function executeAutomatedCase(testCase) {
     for (const mode of modes) {
       const modeOutDir = path.join(caseRunDir, mode);
       ensureDir(modeOutDir);
-      const child = runPhase1(['--input', fixtureAbs, '--out-dir', modeOutDir, '--conversion-mode', mode]);
+      const child = runConverter(['--input', fixtureAbs, '--out-dir', modeOutDir, '--conversion-mode', mode]);
       assert(child.status === 0, `Mode ${mode}: expected exit 0, got ${child.status}`);
 
       const docDir = toDocDir(modeOutDir, fixtureAbs);
@@ -217,7 +226,7 @@ function executeAutomatedCase(testCase) {
   }
 
   if (testCase.check === 'single_filename_matches_pdf') {
-    const child = runPhase1(['--input', fixtureAbs, '--out-dir', caseRunDir, '--conversion-mode', 'single']);
+    const child = runConverter(['--input', fixtureAbs, '--out-dir', caseRunDir, '--conversion-mode', 'single']);
     assert(child.status === 0, `Expected exit 0, got ${child.status}`);
     const docDir = toDocDir(caseRunDir, fixtureAbs);
     const expected = `${path.parse(fixtureAbs).name}.md`;
